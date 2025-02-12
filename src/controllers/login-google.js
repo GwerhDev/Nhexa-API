@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
-const { User } = require("../models/User");
+const userSchema = require("../models/User");
 const { clientUrl } = require("../config");
 const { createToken } = require("../integrations/jwt");
 const { loginGoogle } = require("../integrations/google");
@@ -26,12 +26,11 @@ router.get('/callback', passport.authenticate('login-google', {
 router.get('/success', async (req, res) => {
   try {
     const user = req.session.passport.user;
-    console.log(user);
-    const userExist = await User.findOne({ where: { email: user.email }});
+    const userExist = await userSchema.findOne({ email: user.email });
 
     if (userExist) {
-      const { id, role } = userExist || {};
-      const data_login = { id, role };
+      const { _id, role } = userExist || {};
+      const data_login = { _id, role };
       const token = await createToken(data_login, 3);
 
       return res.status(200).redirect(`${clientUrl}/auth/${token}`);

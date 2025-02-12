@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { User } = require('../models/User');
+const userSchema = require("../models/User");
 const { decodeToken } = require('../integrations/jwt');
 const { message } = require('../messages');
 
@@ -7,17 +7,17 @@ router.get("/", async(req, res) => {
   try {
     const userToken = req.headers.authorization;
     const decodedToken = await decodeToken(userToken);
-    const user = await User.findByPk(decodedToken.data.id);
+    const user = await userSchema.findById(decodedToken.data._id);
     
     if(!user) return res.status(404).send({ logged: false, message: message.user.notfound });
     
     const userData = {
-      id: user.dataValues.id,
-      username: user.dataValues.username,
-      email: user.dataValues.email,
-      isVerified: user.dataValues.isVerified,
-      role: user.dataValues.role,
-      profilePic: user.dataValues.profilePic || user.dataValues.googlePic
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      isVerified: user.isVerified,
+      role: user.role,
+      profilePic: user.profilePic || user.googlePic
     }
     
     return res.status(200).send({ logged: true, userData });

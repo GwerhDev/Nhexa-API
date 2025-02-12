@@ -1,49 +1,15 @@
-const { DataTypes, Sequelize } = require("sequelize");
-const { sequelize } = require('../integrations/postgreSQL');
+const mongoose = require("mongoose");
 
-const User = sequelize.define('user', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: Sequelize.UUIDV4,
-    primaryKey: true,
-    allowNull: false,
-  },
-  username: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  profilePic: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  isVerified: {
-    type: DataTypes.BOOLEAN,
-    allowNull: true,
-  },
-  method: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  role:{
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  googleId: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  googlePic:{
-    type: DataTypes.STRING,
-    allowNull: true,
-  }
+const userSchema = new mongoose.Schema({
+  role: { type: String, required: true },
+  email: { type: String, require: true },
+  method: { type: String, required: true },
+  password: { type: String, require: true },
+  username: { type: String, require: true },
+  googleId: { type: String, required: true },
+  googlePic: { type: String, required: true },
+  profilePic: { type: String, require: true },
+  isVerified: { type: Boolean, require: true },
 });
 
-module.exports = { User };
+module.exports = mongoose.model('User', userSchema);

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { User } = require("../models/User");
+const userSchema = require("../models/User");
 const bcrypt = require("bcrypt");
 const { message } = require("../messages");
 const { status, roles, methods } = require("../misc/consts-user-model");
@@ -9,21 +9,21 @@ const { adminEmailList } = require("../config");
 
 router.post('/', async (req, res) => {
   try {
-    const { username, password, email  } = req.body;
+    const { username, password, email } = req.body;
 
-    if(!username || !password || !email) return res.status(400).send({ error: message.signup.error });
+    if (!username || !password || !email) return res.status(400).send({ error: message.signup.error });
 
-    const existingUser = await User.findOne({ where: { email: email } });
-    
-    if(existingUser) {
+    const existingUser = await userSchema.findOne({ email: email });
+
+    if (existingUser) {
       const tokenData = {
-        id: existingUser.id,
+        _id: existingUser._id,
         role: existingUser.role,
       };
       const token = await createToken(tokenData, 3);
-      return res.status(200).send({token});
+      return res.status(200).send({ token });
     };
-    
+
     const userData = {
       username,
       password,
@@ -40,12 +40,12 @@ router.post('/', async (req, res) => {
     const salt = await bcrypt.genSalt();
     userData.password = await bcrypt.hash(password, salt);
 
-    if(adminEmailList.includes(email)) userData.role = roles.admin;
-    
-    const userCreated = await User.create(userData);
+    if (adminEmailList.includes(email)) userData.role = roles.admin;
+
+    const userCreated = await userSchema.create(userData);
 
     const tokenData = {
-      id: userCreated.id,
+      _id: userCreated._id,
       role: userCreated.role,
     };
     const token = await createToken(tokenData, 3);

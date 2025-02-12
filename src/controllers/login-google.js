@@ -33,7 +33,7 @@ router.get('/success', async (req, res) => {
       const data_login = { _id, role };
       const token = await createToken(data_login, 3);
 
-      return res.status(200).redirect(`${clientUrl}/auth/${token}`);
+      return res.status(200).redirect(`${clientUrl}/auth?token=${token}`);
     } else {
       return res.status(400).redirect(`${clientUrl}/account/not-found`);
     }

@@ -18,7 +18,7 @@ passport.deserializeUser((user, done) => {
 
 router.get('/', (req, res, next) => {
   const callbackUrl = req.query.callback || `${clientUrl}`;
-  const state = encodeURIComponent(callbackUrl);
+  const state = callbackUrl;
   passport.authenticate('login-google', { state })(req, res, next);
 });
 

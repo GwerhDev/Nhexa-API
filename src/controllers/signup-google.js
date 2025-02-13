@@ -30,10 +30,9 @@ router.get('/failure', (req, res) => {
 
 router.get('/success', async (req, res) => {
   try {
-    const user = req.session.passport.user;
+    const { userData: user, callbackUrl } = req.session.passport.user;
     const existingUser = await userSchema.findOne({ email: user.email }) || null;
-    console.log(user)
-    
+
     if (existingUser) {
       const tokenData = {
         _id: existingUser._id,
@@ -42,7 +41,6 @@ router.get('/success', async (req, res) => {
       const token = await createToken(tokenData, 3);
       return res.status(200).redirect(`${clientUrl}/auth?token=${token}`);
     }
-
 
     const userData = {
       username: user.username ?? defaultUsername,
@@ -65,10 +63,11 @@ router.get('/success', async (req, res) => {
       _id: userCreated._id,
       role: userCreated.role,
     };
-
     const token = await createToken(tokenData, 3);
 
-    return res.status(200).redirect(`${clientUrl}/auth?token=${token}`);
+    const callback = decodeURIComponent(callbackUrl || clientUrl);
+
+    return res.status(200).redirect(`${callback}/auth?token=${token}`);
 
   } catch (error) {
     return res.send(error);

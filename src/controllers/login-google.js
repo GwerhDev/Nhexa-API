@@ -16,7 +16,11 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
-router.get('/', passport.authenticate('login-google', { state: '200' }));
+router.get('/', (req, res, next) => {
+  const callbackUrl = req.query.callback || `${clientUrl}`;
+  const state = encodeURIComponent(callbackUrl);
+  passport.authenticate('login-google', { state })(req, res, next);
+});
 
 router.get('/callback', passport.authenticate('login-google', {
   successRedirect: '/login-google/success',
@@ -25,20 +29,22 @@ router.get('/callback', passport.authenticate('login-google', {
 
 router.get('/success', async (req, res) => {
   try {
-    const user = req.session.passport.user;
-    const userExist = await userSchema.findOne({ email: user.email });
+    const { userData, callbackUrl } = req.session.passport.user;
+    const userExist = await userSchema.findOne({ email: userData.email });
 
     if (userExist) {
       const { _id, role } = userExist || {};
       const data_login = { _id, role };
       const token = await createToken(data_login, 3);
 
-      return res.status(200).redirect(`${clientUrl}/auth?token=${token}`);
+      const callback = decodeURIComponent(callbackUrl || clientUrl);
+
+      return res.status(200).redirect(`${callback}/auth?token=${token}`);
     } else {
-      return res.status(400).redirect(`${clientUrl}/account/not-found`);
+      return res.status(400).redirect(`${callback}/account/not-found`);
     }
   } catch (error) {
-    return res.status(400).redirect(`${clientUrl}/auth?token=none`);
+    return res.status(400).redirect(`${callback}/auth?token=none`);
   }
 });
 

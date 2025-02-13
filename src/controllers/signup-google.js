@@ -32,6 +32,7 @@ router.get('/success', async (req, res) => {
   try {
     const user = req.session.passport.user;
     const existingUser = await userSchema.findOne({ email: user.email }) || null;
+    console.log(user)
     
     if (existingUser) {
       const tokenData = {
@@ -41,6 +42,7 @@ router.get('/success', async (req, res) => {
       const token = await createToken(tokenData, 3);
       return res.status(200).redirect(`${clientUrl}/auth?token=${token}`);
     }
+
 
     const userData = {
       username: user.username ?? defaultUsername,

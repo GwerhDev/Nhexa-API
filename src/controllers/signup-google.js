@@ -4,7 +4,7 @@ const passport = require("passport");
 const userSchema = require("../models/User");
 const { signupGoogle } = require("../integrations/google");
 const { createToken } = require("../integrations/jwt");
-const { clientUrl, defaultPassword, defaultUsername, adminEmailList } = require("../config");
+const { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList } = require("../config");
 const { status, methods, roles } = require("../misc/consts-user-model");
 
 passport.use('signup-google', signupGoogle);
@@ -25,7 +25,7 @@ router.get('/callback', passport.authenticate('signup-google', {
 }));
 
 router.get('/failure', (req, res) => {
-  return res.status(400).redirect(`${clientUrl}/register/failed`);
+  return res.status(400).redirect(`${clientAccountsUrl}/register/failed`);
 });
 
 router.get('/success', async (req, res) => {
@@ -39,7 +39,7 @@ router.get('/success', async (req, res) => {
         role: existingUser.role,
       };
       const token = await createToken(tokenData, 3);
-      return res.status(200).redirect(`${clientUrl}/auth?token=${token}`);
+      return res.status(200).redirect(`${clientAccountsUrl}/auth?token=${token}`);
     }
 
     const userData = {
@@ -65,7 +65,7 @@ router.get('/success', async (req, res) => {
     };
     const token = await createToken(tokenData, 3);
 
-    const callback = decodeURIComponent(callbackUrl || clientUrl);
+    const callback = decodeURIComponent(callbackUrl || clientAccountsUrl);
 
     return res.status(200).redirect(`${callback}/auth?token=${token}`);
 

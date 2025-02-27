@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const passport = require("passport");
 const userSchema = require("../models/User");
-const { clientUrl } = require("../config");
+const { clientAccountsUrl } = require("../config");
 const { createToken } = require("../integrations/jwt");
 const { loginGoogle } = require("../integrations/google");
 
@@ -17,7 +17,7 @@ passport.deserializeUser((user, done) => {
 });
 
 router.get('/', (req, res, next) => {
-  const callbackUrl = req.query.callback || `${clientUrl}`;
+  const callbackUrl = req.query.callback || clientAccountsUrl;
   const state = callbackUrl;
   passport.authenticate('login-google', { state })(req, res, next);
 });
@@ -37,7 +37,7 @@ router.get('/success', async (req, res) => {
       const data_login = { _id, role };
       const token = await createToken(data_login, 3);
 
-      const callback = decodeURIComponent(callbackUrl || clientUrl);
+      const callback = decodeURIComponent(callbackUrl || clientAccountsUrl);
 
       return res.status(200).redirect(`${callback}/auth?token=${token}`);
     } else {

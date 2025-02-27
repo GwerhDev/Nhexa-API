@@ -7,15 +7,11 @@ const googlLogin = require('../controllers/login-google');
 const innerSignup = require('../controllers/signup-inner');
 const googleSignup = require('../controllers/signup-google');
 
-const mercadopago = require("../integrations/mercadopago.js");
-
 router.use("/auth", auth);
 router.use("/account", account);
 router.use("/login-inner", innerLogin);
 router.use("/login-google", googlLogin);
 router.use("/signup-inner", innerSignup);
 router.use("/signup-google", googleSignup);
-
-router.use("/mercadopago", mercadopago);
 
 module.exports =  router;

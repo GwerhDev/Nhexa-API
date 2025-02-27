@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for nexha-api-solitary-bush-2737 on 2025-02-27T20:04:13-03:00
+# fly.toml app configuration file generated for nhexa-api on 2025-02-27T20:39:19-03:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'nexha-api-solitary-bush-2737'
+app = 'nhexa-api'
 primary_region = 'scl'
 
 [build]

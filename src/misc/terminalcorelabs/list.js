@@ -13,7 +13,7 @@ export const terminalcoreMenu = [
         label: "Streamby",
         description: "Almacena y administra archivos multimedia para tus proyectos de software",
         icon: null,
-        href: "https://streamby.vercel.app",
+        href: "https://streamby.nhexa.cl",
         route: null,
       },
     ]

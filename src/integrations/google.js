@@ -28,9 +28,9 @@ const loginGoogle = new GoogleStrategy(
           googleId: profile.id,
         };
 
-        const callbackUrl = req.query.state ? decodeURIComponent(req.query.state) : null;
+        const callback = req.query.state || null;
 
-        return done(null, { userData, callbackUrl });
+        return done(null, { userData, callback });
       } catch (err) {
         return done(err);
       }
@@ -63,9 +63,9 @@ const signupGoogle = new GoogleStrategy({
         displayName: profile.displayName,
         googleId: profile.id,
       }
-      const callbackUrl = req.query.state ? decodeURIComponent(req.query.state) : null;
+      const callback = req.query.state || null;
 
-      return done(null, { userData, callbackUrl });
+      return done(null, { userData, callback });
     } catch (err) {
       return done(err);
     }

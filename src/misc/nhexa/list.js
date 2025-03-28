@@ -7,6 +7,17 @@ const terminalkillersystemsIcon = "https://streamby.s3.sa-east-1.amazonaws.com/N
 
 export const nhexaMenu = [
   {
+    label: "Franquicias",
+    submenu: [
+      {
+        label: "World Of Gwerh",
+        description: "Acércate a escuchar las historias que el bardo tiene para contarte",
+        icon: null,
+        href: "https://worldofgwerh.nhexa.cl"
+      }
+    ]
+  },
+  {
     label: "Departamentos",
     submenu: [
       {

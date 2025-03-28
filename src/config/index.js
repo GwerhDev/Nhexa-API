@@ -5,6 +5,7 @@ module.exports = {
   port: process.env.PORT,
   apiUrl: process.env.NODE_ENV === production ? process.env.API_URL_PROD : process.env.API_URL,
   clientAccountsUrl: process.env.NODE_ENV === production ? process.env.CLIENT_ACCOUNTS_URL_PROD : process.env.CLIENT_ACCOUNTS_URL,
+  domainCookie: process.env.NODE_ENV === production ? process.env.DOMAIN_COOKIE_PROD : process.env.DOMAIN_COOKIE,
 
   adminEmailList: process.env.ADMIN_EMAIL_LIST,
 

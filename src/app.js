@@ -9,8 +9,8 @@ const passport = require("passport");
 const bodyParser = require("body-parser");
 const { privateSecret } = require("./config");
 
-server.use(bodyParser.json({limit: '100mb'}));
-server.use(bodyParser.urlencoded({limit: '100mb', extended: true}));
+server.use(bodyParser.json({ limit: '100mb' }));
+server.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
 server.use(morgan('dev'));
 
 server.use((req, res, next) => {
@@ -18,7 +18,20 @@ server.use((req, res, next) => {
   console.log('method:', req.method);
   console.log('route:', req.url);
 
-  res.header('Access-Control-Allow-Origin', '*');
+  const allwedOrigins = [
+    'https://nhexa.cl',
+    'https://accounts.nhexa.cl',
+
+    'http://localhost:5173',
+  ];
+
+  const origin = req.headers.origin;
+
+  if (allwedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  };
+
+  res.header('Access-Control-Allow-Credentials', true);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Access-Control-Allow-Origin');
 
@@ -28,6 +41,7 @@ server.use((req, res, next) => {
     next();
   }
 });
+
 server.use(session({
   secret: privateSecret,
   resave: false,

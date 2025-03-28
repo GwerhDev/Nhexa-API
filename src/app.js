@@ -20,13 +20,6 @@ server.use((req, res, next) => {
   console.log('method:', req.method);
   console.log('route:', req.url);
 
-  const allwedOrigins = [
-    'https://nhexa.cl',
-    'https://accounts.nhexa.cl',
-
-    'http://localhost:5173',
-  ];
-
   const origin = req.headers.origin;
 
   if (allwedOrigins.includes(origin)) {

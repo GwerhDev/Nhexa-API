@@ -7,7 +7,7 @@ const session = require("express-session");
 
 const passport = require("passport");
 const bodyParser = require("body-parser");
-const { privateSecret } = require("./config");
+const { privateSecret, allwedOrigins } = require("./config");
 const cookieParser = require('cookie-parser');
 
 server.use(bodyParser.json({ limit: '100mb' }));

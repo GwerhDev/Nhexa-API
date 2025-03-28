@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const passport = require("passport");
 const userSchema = require("../models/User");
-const { clientAccountsUrl, domainCookie } = require("../config");
+const { clientAccountsUrl } = require("../config");
 const { createToken } = require("../integrations/jwt");
 const { loginGoogle } = require("../integrations/google");
 
@@ -43,7 +43,7 @@ router.get('/success', async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "None",
-      /* domain: ".nhexa.cl", */
+      domain: ".nhexa.cl",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000
     });

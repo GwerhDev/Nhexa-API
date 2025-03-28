@@ -6,7 +6,6 @@ const { message } = require('../messages');
 router.get("/", async(req, res) => {
   try {
     const userToken = req.headers.authorization || null;
-    console.log(userToken);
     if(!userToken) return res.status(401).send({ logged: false, message: message.user.unauthorized });
 
     const decodedToken = await decodeToken(userToken);

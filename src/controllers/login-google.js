@@ -28,7 +28,8 @@ router.get('/callback', passport.authenticate('login-google', {
 }));
 
 router.get('/success', async (req, res) => {
-  const { userData } = req.session.passport.user;
+  const { userData, callback } = req.session.passport.user || {};
+  console.log(callback)
 
   try {
     const userExist = await userSchema.findOne({ email: userData.email });
@@ -43,12 +44,12 @@ router.get('/success', async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "None",
-      domain: ".nhexa.cl",
+      /* domain: ".nhexa.cl", */
       path: "/",
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    return res.status(200).redirect(clientAccountsUrl);
+    return res.status(200).redirect(callback || clientAccountsUrl);
 
   } catch (error) {
     return res.status(400).redirect(`${clientAccountsUrl}/auth?token=none`);

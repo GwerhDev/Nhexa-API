@@ -1,11 +1,11 @@
 const router = require("express").Router();
 
 router.get('/', (req, res) => {
-  console.log(req.cookies);
   const { userToken } = req.cookies || {};
+  console.log(userToken);
   try {
     if (!userToken) return res.status(401).json({ loggedIn: false });
-    res.json({ loggedIn: true, userToken });
+    res.status(200).json({ loggedIn: true, userToken });
   } catch (error) {
     res.status(401).json({ loggedIn: false });
   }

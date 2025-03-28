@@ -40,9 +40,10 @@ router.get('/success', async (req, res) => {
     const token = await createToken(data_login, 3);
 
     res.cookie("userToken", token, {
+      httpOnly: true,
       secure: true,
       sameSite: "None",
-      domain: ".nhexa.cl",
+      /* domain: ".nhexa.cl", */
       path: "/",
       maxAge: 24 * 60 * 60 * 1000
     });

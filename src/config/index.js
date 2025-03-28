@@ -16,5 +16,5 @@ module.exports = {
   
   authClientId: process.env.AUTH_CLIENT_ID,
   authClientSecret: process.env.AUTH_CLIENT_SECRET,
-  allwedOrigins: process.env.ALLOWED_ORIGINS,
+  allwedOrigins: process.env.NODE_ENV === production ? process.env.ALLOWED_ORIGINS_PROD : process.env.ALLOWED_ORIGINS,
 }

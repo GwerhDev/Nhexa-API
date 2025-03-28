@@ -7,7 +7,7 @@ const terminalkillersystemsIcon = "https://streamby.s3.sa-east-1.amazonaws.com/N
 
 export const nhexaMenu = [
   {
-    label: "Franquicias",
+    label: "Proyectos",
     submenu: [
       {
         label: "World Of Gwerh",

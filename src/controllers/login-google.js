@@ -27,6 +27,10 @@ router.get('/callback', passport.authenticate('login-google', {
   failureRedirect: '/login-google/failure'
 }));
 
+router.get('/failure', (req, res) => {
+  return res.status(400).redirect(`${clientAccountsUrl}/login/failed`);
+});
+
 router.get('/success', async (req, res) => {
   const { userData, callback } = req.session.passport.user || {};
 
@@ -43,7 +47,6 @@ router.get('/success', async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "None",
-      /* domain: ".nhexa.cl", */
       path: "/",
       maxAge: 24 * 60 * 60 * 1000
     });
@@ -51,7 +54,7 @@ router.get('/success', async (req, res) => {
     return res.status(200).redirect(callback || clientAccountsUrl);
 
   } catch (error) {
-    return res.status(400).redirect(`${clientAccountsUrl}/auth?token=none`);
+    return res.status(500).redirect(`${clientAccountsUrl}/login/failed`);
   }
 });
 

@@ -54,14 +54,12 @@ router.get('/success', async (req, res) => {
     };
 
     if (adminEmailList?.includes(user.email)) userData.role = roles.admin;
-
     await userSchema.create(userData);
 
-    const redirect = callback ? `${callback}/register/success` : `${clientAccountsUrl}/register/success`;
-    return res.status(200).redirect(redirect);
+    return res.status(200).redirect(`${callback}/register/success`);
 
   } catch (error) {
-    return res.send(error);
+    return res.status(500).redirect(`${clientAccountsUrl}/register/failed`);
   }
 });
 

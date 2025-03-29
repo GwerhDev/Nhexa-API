@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
       return res.status(400).send({ logged: false, message: message.login.failure });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = bcrypt.compare(password, user.password);
 
     if (passwordMatch) {
       const { _id, role } = user;
@@ -21,10 +21,9 @@ router.post("/", async (req, res) => {
       const token = await createToken(data, 3);
 
       res.cookie("userToken", token, {
-        httpOnly: false,
+        httpOnly: true,
         secure: true,
         sameSite: "None",
-        domain: ".nhexa.cl",
         path: "/",
         maxAge: 24 * 60 * 60 * 1000
       });

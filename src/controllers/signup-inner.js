@@ -32,15 +32,13 @@ router.post('/', async (req, res) => {
       status: status.inactive,
       isVerified: false,
       method: methods.inner,
-      role: roles.freemium,
+      role: roles.user,
       googleId: null,
       googlePic: null
     };
 
     const salt = await bcrypt.genSalt();
     userData.password = await bcrypt.hash(password, salt);
-
-    if (adminEmailList.includes(email)) userData.role = roles.admin;
 
     const userCreated = await userSchema.create(userData);
 

@@ -4,8 +4,8 @@ module.exports = {
     inactive: "inactive"
   },
   roles: {
+    user: "user",
     admin: "admin",
-    freemium: "freemium",
     subscriptor: "subscriptor"
   },
   methods: {

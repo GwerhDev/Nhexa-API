@@ -38,7 +38,6 @@ const loginGoogle = new GoogleStrategy(
   }
 );
 
-
 const signupGoogle = new GoogleStrategy({
   clientID: authClientId,
   clientSecret: authClientSecret,
@@ -52,7 +51,7 @@ const signupGoogle = new GoogleStrategy({
   ],
   accessType: 'offline',
   passReqToCallback: true,
-}, function (accessToken, refreshToken, profile, done) {
+}, function (req, accessToken, refreshToken, profile, done) {
   process.nextTick(async function () {
     try {
       const userData = {

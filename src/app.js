@@ -22,8 +22,6 @@ server.use((req, res, next) => {
 
   const origin = req.headers.origin;
 
-  console.log(allwedOrigins)
-
   if (allwedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
   };

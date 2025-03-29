@@ -3,7 +3,6 @@ const router = express.Router();
 const passport = require("passport");
 const userSchema = require("../models/User");
 const { signupGoogle } = require("../integrations/google");
-const { createToken } = require("../integrations/jwt");
 const { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList } = require("../config");
 const { status, methods, roles } = require("../misc/consts-user-model");
 
@@ -17,7 +16,11 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
-router.get('/', passport.authenticate('signup-google', { state: '200' }));
+router.get('/', (req, res, next) => {
+  const { callback } = req.query || {};
+  const state = callback;
+  passport.authenticate('signup-google', { state })(req, res, next);
+});
 
 router.get('/callback', passport.authenticate('signup-google', {
   successRedirect: '/signup-google/success',
@@ -30,16 +33,11 @@ router.get('/failure', (req, res) => {
 
 router.get('/success', async (req, res) => {
   try {
-    const { userData: user, callbackUrl } = req.session.passport.user;
+    const { userData: user, callback } = req.session.passport.user;
     const existingUser = await userSchema.findOne({ email: user.email }) || null;
 
     if (existingUser) {
-      const tokenData = {
-        _id: existingUser._id,
-        role: existingUser.role,
-      };
-      const token = await createToken(tokenData, 3);
-      return res.status(200).redirect(`${clientAccountsUrl}/auth?token=${token}`);
+      return res.status(200).redirect(`${clientAccountsUrl}/account/already-exists`);
     }
 
     const userData = {
@@ -51,23 +49,16 @@ router.get('/success', async (req, res) => {
       method: methods.google,
       googleId: user.googleId,
       googlePic: user.photo ?? null,
-      role: roles.freemium,
+      role: roles.user,
       status: status.active,
     };
 
     if (adminEmailList?.includes(user.email)) userData.role = roles.admin;
 
-    const userCreated = await userSchema.create(userData);
+    await userSchema.create(userData);
 
-    const tokenData = {
-      _id: userCreated._id,
-      role: userCreated.role,
-    };
-    const token = await createToken(tokenData, 3);
-
-    const callback = decodeURIComponent(callbackUrl || clientAccountsUrl);
-
-    return res.status(200).redirect(`${callback}/auth?token=${token}`);
+    const redirect = callback ? `${callback}/register/success` : `${clientAccountsUrl}/register/success`;
+    return res.status(200).redirect(redirect);
 
   } catch (error) {
     return res.send(error);

@@ -5,7 +5,6 @@ const bcrypt = require("bcrypt");
 const { message } = require("../messages");
 const { status, roles, methods } = require("../misc/consts-user-model");
 const { createToken } = require("../integrations/jwt");
-const { adminEmailList } = require("../config");
 
 router.post('/', async (req, res) => {
   try {

@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
 router.patch("/update/:id", async (req, res) => {
   const { body } = req;
   const { id } = req.params;
-  const userToken = req.headers.authorization;
+  const { userToken } = req.cookies || {};
 
   if (!userToken) return res.status(403).json({ message: message.admin.permissionDenied });
 

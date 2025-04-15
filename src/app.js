@@ -32,16 +32,12 @@ server.use('/streamby', createStreamByRouter({
   authProvider: async (req) => {
     const token = req.cookies['userToken'] || req.headers.authorization?.split(' ')[1];
     const decoded = await decodeToken(token);
-
     const user = await userSchema.findById(decoded.data._id);
-    if (!user || !user.projects || !Array.isArray(user.projects)) {
-      throw new Error('Unauthorized');
-    }
-
     return {
-      userId: user._id.toString(),
-      projects: user.projects.map(p => p.toString()),
-      role: user.role
+      userId: user._id,
+      role: user.role,
+      projects: user.projects,
+      profilePic: user.profilePic || user.googlePic
     };
   },
   projectProvider: async (projectId) => {

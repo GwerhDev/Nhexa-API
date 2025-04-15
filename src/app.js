@@ -5,6 +5,7 @@ const routes = require("./routes");
 const morgan = require("morgan");
 const session = require("express-session");
 const passport = require("passport");
+require("./integrations/passport");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 

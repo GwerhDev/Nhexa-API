@@ -32,14 +32,19 @@ router.get('/failure', (req, res) => {
 });
 
 router.get('/success', async (req, res) => {
-  const { userData, callback } = req.session.passport.user || {};
+  const userSession = req.session.passport?.user;
+
+  if (!userSession) {
+    return res.status(401).redirect(`${clientAccountsUrl}/login/failed`);
+  }
+
+  const { userData, callback } = userSession;
 
   try {
     const userExist = await userSchema.findOne({ email: userData.email });
-
     if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
 
-    const { _id, role } = userExist || {};
+    const { _id, role } = userExist;
     const data_login = { _id, role };
     const token = await createToken(data_login, 3);
 
@@ -52,7 +57,7 @@ router.get('/success', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    return res.status(200).redirect(callback || clientAccountsUrl);
+    return res.redirect(callback || clientAccountsUrl);
 
   } catch (error) {
     return res.status(500).redirect(`${clientAccountsUrl}/login/failed`);

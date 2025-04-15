@@ -5,7 +5,8 @@ router.get("/", (req, res) => {
     httpOnly: true,
     secure: true,
     sameSite: "None",
-    path: "/"
+    domain: ".nhexa.cl",
+    path: "/",
   });
 
   res.status(200).json({ loggedOut: true });

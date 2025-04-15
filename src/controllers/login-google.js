@@ -2,68 +2,51 @@ const express = require("express");
 const router = express.Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-
 const userSchema = require("../models/User");
-const { signupGoogle } = require("../integrations/google");
-const { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList, privateSecret } = require("../config");
-const { status, methods, roles } = require("../misc/consts-user-model");
+const { clientAccountsUrl, privateSecret } = require("../config");
 const { createToken } = require("../integrations/jwt");
+const { loginGoogle } = require("../integrations/google");
 
-passport.use('signup-google', signupGoogle);
+passport.use('login-google', loginGoogle);
 
 router.get('/', (req, res, next) => {
   const { callback } = req.query || {};
   const state = callback;
-  passport.authenticate('signup-google', { state })(req, res, next);
+  passport.authenticate('login-google', { state })(req, res, next);
 });
 
 router.get('/callback', (req, res, next) => {
-  passport.authenticate('signup-google', async (err, user, info) => {
+  passport.authenticate('login-google', (err, user, info) => {
     if (err || !user) {
-      return res.redirect(`${clientAccountsUrl}/register/failed`);
+      return res.redirect(`${clientAccountsUrl}/login/failed?status=401`);
     }
 
     const { userData, callback } = user;
-    const token = jwt.sign({ userData, callback }, privateSecret, { expiresIn: '5m' });
+    const token = jwt.sign(userData, privateSecret, { expiresIn: '5m' });
+    const nextUrl = callback || clientAccountsUrl;
 
-    return res.redirect(`/signup-google/success?token=${token}`);
+    return res.redirect(`/login-google/success?token=${token}&next=${encodeURIComponent(nextUrl)}`);
   })(req, res, next);
 });
 
 router.get('/success', async (req, res) => {
   try {
-    const { token } = req.query;
-    if (!token) return res.redirect(`${clientAccountsUrl}/register/failed`);
+    const token = req.query.token;
+    const next = req.query.next || clientAccountsUrl;
 
-    const { userData, callback } = jwt.verify(token, privateSecret);
-
-    const existingUser = await userSchema.findOne({ email: userData.email });
-    if (existingUser) {
-      return res.redirect(`${clientAccountsUrl}/account/already-exists`);
+    if (!token) {
+      return res.redirect(`${clientAccountsUrl}/login/failed?status=403`);
     }
 
-    const userDataToSave = {
-      username: userData.username ?? defaultUsername,
-      password: defaultPassword,
-      email: userData.email,
-      profilePic: null,
-      isVerified: true,
-      method: methods.google,
-      googleId: userData.googleId,
-      googlePic: userData.photo ?? null,
-      role: roles.user,
-      status: status.active,
-    };
+    const userData = jwt.verify(token, privateSecret);
 
-    if (adminEmailList?.includes(userData.email)) {
-      userDataToSave.role = roles.admin;
-    }
+    const userExist = await userSchema.findOne({ email: userData.email });
+    if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
 
-    const newUser = await userSchema.create(userDataToSave);
+    const { _id, role } = userExist;
+    const sessionToken = await createToken({ _id, role }, 3);
 
-    const authToken = await createToken({ _id: newUser._id, role: newUser.role }, 3);
-
-    res.cookie("userToken", authToken, {
+    res.cookie("userToken", sessionToken, {
       httpOnly: true,
       secure: true,
       sameSite: "None",
@@ -72,15 +55,11 @@ router.get('/success', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    return res.redirect(`${callback}/register/success`);
+    return res.redirect(next);
 
   } catch (error) {
-    return res.status(500).redirect(`${clientAccountsUrl}/register/failed`);
+    return res.status(500).redirect(`${clientAccountsUrl}/login/failed?status=500`);
   }
-});
-
-router.get('/failure', (req, res) => {
-  return res.status(400).redirect(`${clientAccountsUrl}/register/failed`);
 });
 
 module.exports = router;

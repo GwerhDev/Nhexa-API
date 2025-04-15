@@ -1,20 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
+const jwt = require("jsonwebtoken");
+
 const userSchema = require("../models/User");
 const { signupGoogle } = require("../integrations/google");
-const { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList } = require("../config");
+const { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList, privateSecret } = require("../config");
 const { status, methods, roles } = require("../misc/consts-user-model");
+const { createToken } = require("../integrations/jwt");
 
 passport.use('signup-google', signupGoogle);
-
-passport.serializeUser((user, done) => {
-  done(null, user);
-});
-
-passport.deserializeUser((user, done) => {
-  done(null, user);
-});
 
 router.get('/', (req, res, next) => {
   const { callback } = req.query || {};
@@ -22,45 +17,70 @@ router.get('/', (req, res, next) => {
   passport.authenticate('signup-google', { state })(req, res, next);
 });
 
-router.get('/callback', passport.authenticate('signup-google', {
-  successRedirect: '/signup-google/success',
-  failureRedirect: '/signup-google/failure'
-}));
+router.get('/callback', (req, res, next) => {
+  passport.authenticate('signup-google', async (err, user, info) => {
+    if (err || !user) {
+      return res.redirect(`${clientAccountsUrl}/register/failed`);
+    }
 
-router.get('/failure', (req, res) => {
-  return res.status(400).redirect(`${clientAccountsUrl}/register/failed`);
+    const { userData, callback } = user;
+    const token = jwt.sign({ userData, callback }, privateSecret, { expiresIn: '5m' });
+
+    return res.redirect(`/signup-google/success?token=${token}`);
+  })(req, res, next);
 });
 
 router.get('/success', async (req, res) => {
   try {
-    const { userData: user, callback } = req.session.passport.user;
-    const existingUser = await userSchema.findOne({ email: user.email }) || null;
+    const { token } = req.query;
+    if (!token) return res.redirect(`${clientAccountsUrl}/register/failed`);
 
+    const { userData, callback } = jwt.verify(token, privateSecret);
+
+    const existingUser = await userSchema.findOne({ email: userData.email });
     if (existingUser) {
-      return res.status(200).redirect(`${clientAccountsUrl}/account/already-exists`);
+      return res.redirect(`${clientAccountsUrl}/account/already-exists`);
     }
 
-    const userData = {
-      username: user.username ?? defaultUsername,
+    const userDataToSave = {
+      username: userData.username ?? defaultUsername,
       password: defaultPassword,
-      email: user.email,
+      email: userData.email,
       profilePic: null,
       isVerified: true,
       method: methods.google,
-      googleId: user.googleId,
-      googlePic: user.photo ?? null,
+      googleId: userData.googleId,
+      googlePic: userData.photo ?? null,
       role: roles.user,
       status: status.active,
     };
 
-    if (adminEmailList?.includes(user.email)) userData.role = roles.admin;
-    await userSchema.create(userData);
+    if (adminEmailList?.includes(userData.email)) {
+      userDataToSave.role = roles.admin;
+    }
 
-    return res.status(200).redirect(`${callback}/register/success`);
+    const newUser = await userSchema.create(userDataToSave);
+
+    const authToken = await createToken({ _id: newUser._id, role: newUser.role }, 3);
+
+    res.cookie("userToken", authToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      domain: ".nhexa.cl",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    return res.redirect(`${callback}/register/success`);
 
   } catch (error) {
     return res.status(500).redirect(`${clientAccountsUrl}/register/failed`);
   }
+});
+
+router.get('/failure', (req, res) => {
+  return res.status(400).redirect(`${clientAccountsUrl}/register/failed`);
 });
 
 module.exports = router;

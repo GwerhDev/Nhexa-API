@@ -6,6 +6,7 @@ const morgan = require("morgan");
 const session = require("express-session");
 const passport = require("passport");
 require("./integrations/passport");
+
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 
@@ -14,6 +15,24 @@ const { createStreamByRouter } = require("streamby-core");
 const { decodeToken } = require("./integrations/jwt");
 const userSchema = require("./models/User");
 const projectSchema = require("./models/Project");
+
+server.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (allwedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+
+  res.header('Access-Control-Allow-Credentials', true);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 server.use(bodyParser.json({ limit: '100mb' }));
 server.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
@@ -32,24 +51,6 @@ server.use(session({
 }));
 server.use(passport.initialize());
 server.use(passport.session());
-
-server.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  if (allwedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-
-  res.header('Access-Control-Allow-Credentials', true);
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Access-Control-Allow-Origin');
-
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
 
 server.use('/streamby', createStreamByRouter({
   storageProvider: {

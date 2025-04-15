@@ -32,12 +32,8 @@ router.get('/failure', (req, res) => {
 });
 
 router.get('/success', async (req, res) => {
-  const userSession = req.session.passport?.user;
-  if (!userSession) {
-    return res.status(401).redirect(`${clientAccountsUrl}/login/failed`);
-  }
-
-  const { userData, callback } = userSession;
+  const { user } = req.session.passport || {};
+  const { userData, callback } = user;
 
   try {
     const userExist = await userSchema.findOne({ email: userData.email });
@@ -47,20 +43,20 @@ router.get('/success', async (req, res) => {
     const data_login = { _id, role };
     const token = await createToken(data_login, 3);
 
-    res.setHeader('Content-Type', 'text/html');
-    res.send(`
-      <html>
-        <script>
-          document.cookie = "userToken=${token}; path=/; domain=.nhexa.cl; secure; SameSite=None";
-          window.location.href = "${callback || clientAccountsUrl}";
-        </script>
-      </html>
-    `);
+    res.cookie("userToken", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      domain: ".nhexa.cl",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    return res.redirect(callback || clientAccountsUrl);
 
   } catch (error) {
     return res.status(500).redirect(`${clientAccountsUrl}/login/failed`);
   }
 });
-
 
 module.exports = router;

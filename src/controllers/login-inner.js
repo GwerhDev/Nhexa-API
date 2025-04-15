@@ -25,6 +25,7 @@ router.post("/", async (req, res) => {
         secure: true,
         sameSite: "None",
         path: "/",
+        domain: '.nhexa.cl',
         maxAge: 24 * 60 * 60 * 1000
       });
 

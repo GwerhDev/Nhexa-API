@@ -35,6 +35,7 @@ router.get('/failure', (req, res) => {
 });
 
 router.get('/success', async (req, res) => {
+  console.log(req.user);
   const { userData, callback } = req.user || {};
 
   try {

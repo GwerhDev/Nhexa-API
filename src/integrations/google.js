@@ -28,8 +28,6 @@ const loginGoogle = new GoogleStrategy(
           googleId: profile.id,
         };
 
-        console.log(userData)
-
         const callback = req.query.state || null;
 
         return done(null, { userData, callback });

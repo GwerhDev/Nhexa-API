@@ -2,51 +2,68 @@ const express = require("express");
 const router = express.Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-const userSchema = require("../models/User");
-const { clientAccountsUrl, privateSecret } = require("../config");
-const { createToken } = require("../integrations/jwt");
-const { loginGoogle } = require("../integrations/google");
 
-passport.use('login-google', loginGoogle);
+const userSchema = require("../models/User");
+const { signupGoogle } = require("../integrations/google");
+const { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList, privateSecret } = require("../config");
+const { status, methods, roles } = require("../misc/consts-user-model");
+const { createToken } = require("../integrations/jwt");
+
+passport.use('signup-google', signupGoogle);
 
 router.get('/', (req, res, next) => {
   const { callback } = req.query || {};
   const state = callback;
-  passport.authenticate('login-google', { state })(req, res, next);
+  passport.authenticate('signup-google', { state })(req, res, next);
 });
 
 router.get('/callback', (req, res, next) => {
-  passport.authenticate('login-google', (err, user, info) => {
+  passport.authenticate('signup-google', async (err, user, info) => {
     if (err || !user) {
-      return res.redirect(`${clientAccountsUrl}/login/failed?status=401`);
+      return res.redirect(`${clientAccountsUrl}/register/failed`);
     }
 
     const { userData, callback } = user;
-    const token = jwt.sign(userData, privateSecret, { expiresIn: '5m' });
-    const nextUrl = callback || clientAccountsUrl;
+    const token = jwt.sign({ userData, callback }, privateSecret, { expiresIn: '5m' });
 
-    return res.redirect(`/login-google/success?token=${token}&next=${encodeURIComponent(nextUrl)}`);
+    return res.redirect(`/signup-google/success?token=${token}`);
   })(req, res, next);
 });
 
 router.get('/success', async (req, res) => {
   try {
-    const token = req.query.token;
-    const next = req.query.next || clientAccountsUrl;
+    const { token } = req.query;
+    if (!token) return res.redirect(`${clientAccountsUrl}/register/failed`);
 
-    if (!token) {
-      return res.redirect(`${clientAccountsUrl}/login/failed?status=403`);
+    const { userData, callback } = jwt.verify(token, privateSecret);
+
+    const existingUser = await userSchema.findOne({ email: userData.email });
+    if (existingUser) {
+      return res.redirect(`${clientAccountsUrl}/account/already-exists`);
     }
 
-    const userData = jwt.verify(token, privateSecret);
+    const userDataToSave = {
+      username: userData.username ?? defaultUsername,
+      password: defaultPassword,
+      email: userData.email,
+      profilePic: null,
+      isVerified: true,
+      method: methods.google,
+      googleId: userData.googleId,
+      googlePic: userData.photo ?? null,
+      role: roles.user,
+      status: status.active,
+    };
 
-    const userExist = await userSchema.findOne({ email: userData.email });
-    if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
+    if (adminEmailList?.includes(userData.email)) {
+      userDataToSave.role = roles.admin;
+    }
 
-    const { _id, role } = userExist;
-    const sessionToken = await createToken({ _id, role }, 3);
+    const newUser = await userSchema.create(userDataToSave);
 
-    res.cookie("userToken", sessionToken, {
+    const authToken = await createToken({ _id: newUser._id, role: newUser.role }, 3);
+
+    res.cookie("userToken", authToken, {
       httpOnly: true,
       secure: true,
       sameSite: "None",
@@ -55,11 +72,15 @@ router.get('/success', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    return res.redirect(next);
+    return res.redirect(`${callback}/register/success`);
 
   } catch (error) {
-    return res.status(500).redirect(`${clientAccountsUrl}/login/failed?status=500`);
+    return res.status(500).redirect(`${clientAccountsUrl}/register/failed`);
   }
+});
+
+router.get('/failure', (req, res) => {
+  return res.status(400).redirect(`${clientAccountsUrl}/register/failed`);
 });
 
 module.exports = router;

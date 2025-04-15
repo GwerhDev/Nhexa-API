@@ -10,9 +10,11 @@ router.post('/', async (req, res) => {
   try {
     const { username, password, email } = req.body;
 
-    if (!username || !password || !email) return res.status(400).send({ error: message.signup.error });
+    if (!username || !password || !email) {
+      return res.status(400).send({ error: message.signup.error });
+    }
 
-    const existingUser = await userSchema.findOne({ email: email });
+    const existingUser = await userSchema.findOne({ email });
 
     if (existingUser) {
       const tokenData = {
@@ -20,12 +22,25 @@ router.post('/', async (req, res) => {
         role: existingUser.role,
       };
       const token = await createToken(tokenData, 3);
-      return res.status(200).send({ token });
-    };
 
-    const userData = {
+      res.cookie("userToken", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "None",
+        domain: ".nhexa.cl",
+        path: "/",
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      return res.status(200).send({ logged: true, message: message.signup.alreadyExists });
+    }
+
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const userCreated = await userSchema.create({
       username,
-      password,
+      password: hashedPassword,
       email,
       profilePic: null,
       status: status.inactive,
@@ -34,12 +49,7 @@ router.post('/', async (req, res) => {
       role: roles.user,
       googleId: null,
       googlePic: null
-    };
-
-    const salt = await bcrypt.genSalt();
-    userData.password = await bcrypt.hash(password, salt);
-
-    const userCreated = await userSchema.create(userData);
+    });
 
     const tokenData = {
       _id: userCreated._id,
@@ -47,11 +57,20 @@ router.post('/', async (req, res) => {
     };
     const token = await createToken(tokenData, 3);
 
-    return res.status(200).send({ msg: message.signup.success, token });
+    res.cookie("userToken", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      domain: ".nhexa.cl",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    return res.status(200).send({ logged: true, message: message.signup.success, token });
 
   } catch (error) {
-    return res.status(400).send({ error: message.signup.error });
-  };
+    return res.status(400).send({ logged: false, error: message.signup.error });
+  }
 });
 
 module.exports = router;

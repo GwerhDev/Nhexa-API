@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
       return res.status(400).send({ logged: false, message: message.login.failure });
     }
 
-    const passwordMatch = bcrypt.compare(password, user.password);
+    const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (passwordMatch) {
       const { _id, role } = user;
@@ -29,7 +29,7 @@ router.post("/", async (req, res) => {
         maxAge: 24 * 60 * 60 * 1000
       });
 
-      return res.status(200).send({ logged: true, message: message.login.success });
+      return res.status(200).send({ logged: true, message: message.login.success, token });
     } else {
       return res.status(400).send({ logged: false, message: message.login.error });
     }

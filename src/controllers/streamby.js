@@ -14,9 +14,10 @@ router.get('/auth', async (req, res) => {
 
     return res.status(200).json({
       logged: true,
+      role: user.role,
       userId: user._id,
       projects: user.projects,
-      role: user.role,
+      profilePic: user.profilePic || user.googlePic,
     });
   } catch (err) {
     return res.status(401).json({ logged: false, error: err.message });

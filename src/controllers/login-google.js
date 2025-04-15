@@ -33,6 +33,7 @@ router.get('/failure', (req, res) => {
 
 router.get('/success', async (req, res) => {
   const { user } = req.session.passport || {};
+  console.log("req.session.passport", req.session.passport)
   const { userData, callback } = user || {};
 
   try {

@@ -89,10 +89,10 @@ server.use(session({
     domain: '.nhexa.cl'
   }
 }));
+server.use(passport.initialize());
 server.use(passport.session());
 
 server.use(bodyParser.json());
-server.use(passport.initialize());
 server.use('/', routes);
 
 module.exports = server;

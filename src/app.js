@@ -4,11 +4,11 @@ const routes = require("./routes");
 
 const morgan = require("morgan");
 const session = require("express-session");
-
 const passport = require("passport");
 const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
+
 const { privateSecret, allwedOrigins } = require("./config");
-const cookieParser = require('cookie-parser');
 const { createStreamByRouter } = require("streamby-core");
 const { decodeToken } = require("./integrations/jwt");
 const userSchema = require("./models/User");
@@ -19,16 +19,25 @@ server.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
 server.use(cookieParser());
 server.use(morgan('dev'));
 
-server.use((req, res, next) => {
-  console.log('request from:', req.headers.origin);
-  console.log('method:', req.method);
-  console.log('route:', req.url);
+server.use(session({
+  secret: privateSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    sameSite: 'None',
+    secure: true,
+    domain: '.nhexa.cl'
+  }
+}));
+server.use(passport.initialize());
+server.use(passport.session());
 
+server.use((req, res, next) => {
   const origin = req.headers.origin;
 
   if (allwedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
-  };
+  }
 
   res.header('Access-Control-Allow-Credentials', true);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
@@ -79,20 +88,6 @@ server.use('/streamby', createStreamByRouter({
   }
 }));
 
-server.use(session({
-  secret: privateSecret,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    sameSite: 'None',
-    secure: true,
-    domain: '.nhexa.cl'
-  }
-}));
-server.use(passport.initialize());
-server.use(passport.session());
-
-server.use(bodyParser.json());
 server.use('/', routes);
 
 module.exports = server;

@@ -20,25 +20,25 @@ router.get('/callback', (req, res, next) => {
       return res.redirect(`${clientAccountsUrl}/login/failed?status=401`);
     }
 
-    req.logIn(user, (err) => {
-      if (err) {
-        return res.redirect(`${clientAccountsUrl}/login/failed?status=500`);
-      }
+    const { userData, callback } = user;
+    const payload = encodeURIComponent(Buffer.from(JSON.stringify(userData)).toString('base64'));
+    const nextUrl = callback || clientAccountsUrl;
 
-      return res.redirect('/login-google/success');
-    });
+    return res.redirect(`/login-google/success?data=${payload}&next=${encodeURIComponent(nextUrl)}`);
   })(req, res, next);
 });
 
-router.get('/failure', (req, res) => {
-  return res.status(400).redirect(`${clientAccountsUrl}/login/failed?status=400`);
-});
-
 router.get('/success', async (req, res) => {
-  console.log(req.user);
-  const { userData, callback } = req.user || {};
-
   try {
+    const payload = req.query.data;
+    const next = req.query.next || clientAccountsUrl;
+
+    if (!payload) {
+      return res.redirect(`${clientAccountsUrl}/login/failed?status=403`);
+    }
+
+    const userData = JSON.parse(Buffer.from(decodeURIComponent(payload), 'base64').toString());
+
     const userExist = await userSchema.findOne({ email: userData.email });
     if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
 
@@ -55,7 +55,7 @@ router.get('/success', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    return res.redirect(callback || clientAccountsUrl);
+    return res.redirect(next);
 
   } catch (error) {
     return res.status(500).redirect(`${clientAccountsUrl}/login/failed?status=500`);

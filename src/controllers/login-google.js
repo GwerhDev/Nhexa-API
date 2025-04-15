@@ -47,7 +47,6 @@ router.get('/success', async (req, res) => {
     const data_login = { _id, role };
     const token = await createToken(data_login, 3);
 
-    // En lugar de redirigir ahora, mostramos HTML intermedio:
     res.setHeader('Content-Type', 'text/html');
     res.send(`
       <html>

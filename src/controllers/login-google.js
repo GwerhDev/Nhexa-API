@@ -35,8 +35,7 @@ router.get('/failure', (req, res) => {
 });
 
 router.get('/success', async (req, res) => {
-  const { user } = req.session.passport || {};
-  const { userData, callback } = user || {};
+  const { userData, callback } = req.user || {};
 
   try {
     const userExist = await userSchema.findOne({ email: userData.email });

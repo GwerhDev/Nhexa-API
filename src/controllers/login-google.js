@@ -8,31 +8,33 @@ const { loginGoogle } = require("../integrations/google");
 
 passport.use('login-google', loginGoogle);
 
-passport.serializeUser((user, done) => {
-  done(null, user);
-});
-
-passport.deserializeUser((user, done) => {
-  done(null, user);
-});
-
 router.get('/', (req, res, next) => {
   const { callback } = req.query || {};
   const state = callback;
   passport.authenticate('login-google', { state })(req, res, next);
 });
 
-router.get('/callback', passport.authenticate('login-google', {
-  successRedirect: '/login-google/success',
-  failureRedirect: '/login-google/failure'
-}));
+router.get('/callback', (req, res, next) => {
+  passport.authenticate('login-google', (err, user, info) => {
+    if (err || !user) {
+      return res.redirect(`${clientAccountsUrl}/login/failed?status=401`);
+    }
+
+    req.logIn(user, (err) => {
+      if (err) {
+        return res.redirect(`${clientAccountsUrl}/login/failed?status=500`);
+      }
+
+      return res.redirect('/login-google/success');
+    });
+  })(req, res, next);
+});
 
 router.get('/failure', (req, res) => {
   return res.status(400).redirect(`${clientAccountsUrl}/login/failed?status=400`);
 });
 
 router.get('/success', async (req, res) => {
-  console.log("req.session.passport", req.session.passport)
   const { user } = req.session.passport || {};
   const { userData, callback } = user || {};
 

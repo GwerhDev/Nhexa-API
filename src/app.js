@@ -44,7 +44,12 @@ server.use((req, res, next) => {
 server.use(session({
   secret: privateSecret,
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    sameSite: 'None',
+    secure: true,
+    domain: '.nhexa.cl'
+  }
 }));
 
 server.use('/streamby', createStreamByRouter({

@@ -41,17 +41,6 @@ server.use((req, res, next) => {
   }
 });
 
-server.use(session({
-  secret: privateSecret,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    sameSite: 'None',
-    secure: true,
-    domain: '.nhexa.cl'
-  }
-}));
-
 server.use('/streamby', createStreamByRouter({
   storageProvider: {
     type: 's3',
@@ -90,9 +79,20 @@ server.use('/streamby', createStreamByRouter({
   }
 }));
 
-server.use(passport.initialize());
-server.use(bodyParser.json());
+server.use(session({
+  secret: privateSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    sameSite: 'None',
+    secure: true,
+    domain: '.nhexa.cl'
+  }
+}));
 server.use(passport.session());
+
+server.use(bodyParser.json());
+server.use(passport.initialize());
 server.use('/', routes);
 
 module.exports = server;

@@ -28,7 +28,7 @@ router.get('/callback', passport.authenticate('login-google', {
 }));
 
 router.get('/failure', (req, res) => {
-  return res.status(400).redirect(`${clientAccountsUrl}/login/failed?reason=google`);
+  return res.status(400).redirect(`${clientAccountsUrl}/login/failed?status=400`);
 });
 
 router.get('/success', async (req, res) => {
@@ -55,7 +55,7 @@ router.get('/success', async (req, res) => {
     return res.redirect(callback || clientAccountsUrl);
 
   } catch (error) {
-    return res.status(500).redirect(`${clientAccountsUrl}/login/failed`);
+    return res.status(500).redirect(`${clientAccountsUrl}/login/failed?status=500`);
   }
 });
 

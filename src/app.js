@@ -11,6 +11,8 @@ const { privateSecret, allwedOrigins } = require("./config");
 const cookieParser = require('cookie-parser');
 const { createStreamByRouter } = require("streamby-core");
 const { decodeToken } = require("./integrations/jwt");
+const userSchema = require("./models/User");
+const projectSchema = require("./models/Project");
 
 server.use(bodyParser.json({ limit: '100mb' }));
 server.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));

@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
+const jwt = require("jsonwebtoken");
 const userSchema = require("../models/User");
-const { clientAccountsUrl } = require("../config");
+const { clientAccountsUrl, privateSecret } = require("../config");
 const { createToken } = require("../integrations/jwt");
 const { loginGoogle } = require("../integrations/google");
 
@@ -21,32 +22,31 @@ router.get('/callback', (req, res, next) => {
     }
 
     const { userData, callback } = user;
-    const payload = encodeURIComponent(Buffer.from(JSON.stringify(userData)).toString('base64'));
+    const token = jwt.sign(userData, privateSecret, { expiresIn: '5m' });
     const nextUrl = callback || clientAccountsUrl;
 
-    return res.redirect(`/login-google/success?data=${payload}&next=${encodeURIComponent(nextUrl)}`);
+    return res.redirect(`/login-google/success?token=${token}&next=${encodeURIComponent(nextUrl)}`);
   })(req, res, next);
 });
 
 router.get('/success', async (req, res) => {
   try {
-    const payload = req.query.data;
+    const token = req.query.token;
     const next = req.query.next || clientAccountsUrl;
 
-    if (!payload) {
+    if (!token) {
       return res.redirect(`${clientAccountsUrl}/login/failed?status=403`);
     }
 
-    const userData = JSON.parse(Buffer.from(decodeURIComponent(payload), 'base64').toString());
+    const userData = jwt.verify(token, privateSecret);
 
     const userExist = await userSchema.findOne({ email: userData.email });
     if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
 
     const { _id, role } = userExist;
-    const data_login = { _id, role };
-    const token = await createToken(data_login, 3);
+    const sessionToken = await createToken({ _id, role }, 3);
 
-    res.cookie("userToken", token, {
+    res.cookie("userToken", sessionToken, {
       httpOnly: true,
       secure: true,
       sameSite: "None",

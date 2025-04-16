@@ -6,6 +6,7 @@ const userSchema = require("../models/User");
 const { clientAccountsUrl, privateSecret } = require("../config");
 const { createToken } = require("../integrations/jwt");
 const { loginGoogle } = require("../integrations/google");
+const { production } = require("../misc/consts");
 
 passport.use('login-google', loginGoogle);
 
@@ -46,14 +47,25 @@ router.get('/success', async (req, res) => {
     const { _id, role } = userExist;
     const sessionToken = await createToken({ _id, role }, 3);
 
-    res.cookie("userToken", sessionToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      domain: ".nhexa.cl",
-      path: "/",
-      maxAge: 24 * 60 * 60 * 1000
-    });
+    if (process.env.NODE_ENV === production) {
+      res.cookie("userToken", sessionToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "None",
+        domain: ".nhexa.cl",
+        path: "/",
+        maxAge: 24 * 60 * 60 * 1000
+      });
+    } else {
+      res.cookie("userToken", sessionToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "Lax",
+        path: "/",
+        maxAge: 24 * 60 * 60 * 1000
+      });
+    }
+
 
     return res.redirect(next);
 

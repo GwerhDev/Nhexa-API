@@ -19,7 +19,7 @@ export const terminalcoreMenu = [
     ]
   }, {
     label: "Aplicaciones",
-    submenu: appList
+    submenu: appList.user
   }, {
     label: "Soporte técnico",
     href: "#",

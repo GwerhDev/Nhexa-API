@@ -31,7 +31,7 @@ export const laruinaMenu = [
     ]
   }, {
     label: "Aplicaciones",
-    submenu: appList
+    submenu: appList.user
   }, {
     label: "Soporte técnico",
     href: "#",

@@ -7,8 +7,10 @@ const router = require("express").Router();
 router.get("/", async (req, res) => {
   const { userToken } = req.cookies || {};
   if (!userToken) return res.status(200).send(appList.user);
-  const decoded = await decodeToken(token) || null;
+
+  const decoded = await decodeToken(userToken) || null;
   const { role } = decoded.data || {};
+
   if (role === roles.admin) return res.status(200).send(appList.admin);
   return res.status(200).send(appList.user);
 });

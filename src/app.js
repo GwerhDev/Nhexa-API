@@ -69,6 +69,7 @@ server.use('/streamby', createStreamByRouter({
     return {
       userId: user._id,
       role: user.role,
+      username: user.username,
       projects: user.projects,
       profilePic: user.profilePic || user.googlePic
     };

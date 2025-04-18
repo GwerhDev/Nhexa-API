@@ -63,12 +63,12 @@ server.use('/streamby', createStreamByRouter({
     }
   },
   authProvider: async (req) => {
-    const token = req.cookies['userToken'] || req.headers.authorization?.split(' ')[1];
-    const decoded = await decodeToken(token);
+    const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')[1];
+    const decoded = await decodeToken(userToken);
     const user = await userSchema.findById(decoded.data._id);
     return {
-      userId: user._id,
       role: user.role,
+      userId: user._id,
       username: user.username,
       projects: user.projects,
       profilePic: user.profilePic || user.googlePic

@@ -6,7 +6,7 @@ const userSchema = require("../models/User");
 
 router.get("/", async (req, res) => {
   try {
-    const { userToken } = req.cookies || {};
+    const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')[1];
     if (!userToken) return res.status(401).send({ logged: false, message: message.user.unauthorized });
 
     const decodedToken = await decodeToken(userToken);

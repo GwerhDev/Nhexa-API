@@ -8,6 +8,7 @@ const folderNodeSchema = new mongoose.Schema({
 
 const projectSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  image: { type: String },
   description: { type: String },
   rootFolders: [folderNodeSchema],
   allowUpload: { type: Boolean, default: true },

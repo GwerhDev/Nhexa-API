@@ -15,6 +15,8 @@ const createStreamByRouter = require("./integrations/streamby");
 
 server.use((req, res, next) => {
   const origin = req.headers.origin;
+  const { body } = req || {};
+  console.log(body)
 
   if (allwedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);

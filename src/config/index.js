@@ -13,6 +13,13 @@ module.exports = {
   privateSecret: process.env.PRIVATE_SECRET,
   defaultPassword: process.env.DEFAULT_PASSWORD,
   defaultUsername: process.env.DEFAULT_USERNAME,
+
+  awsKey: process.env.AWS_KEY,
+  awsSecret: process.env.AWS_SECRET,
+  awsBucket: process.env.AWS_BUCKET,
+  awsAccessKey: process.env.AWS_ACCESS_KEY,
+  awsSecretKey: process.env.AWS_SECRET_KEY,
+  awsBucketRegion: process.env.AWS_BUCKET_REGION,
   
   authClientId: process.env.AUTH_CLIENT_ID,
   authClientSecret: process.env.AUTH_CLIENT_SECRET,

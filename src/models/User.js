@@ -10,7 +10,6 @@ const userSchema = new mongoose.Schema({
   googlePic: { type: String, required: true },
   profilePic: { type: String, require: true },
   isVerified: { type: Boolean, require: true },
-  projects: [{ type: String, ref: 'Project' }],
 });
 
 module.exports = mongoose.model('User', userSchema);

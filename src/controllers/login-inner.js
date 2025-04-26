@@ -18,7 +18,7 @@ router.post("/", async (req, res) => {
     if (passwordMatch) {
       const { _id, role } = user;
       const data = { _id, role };
-      const token = await createToken(data, 3);
+      const token = await createToken(data, 24);
 
       res.cookie("userToken", token, {
         httpOnly: true,

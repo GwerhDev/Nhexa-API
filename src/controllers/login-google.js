@@ -45,7 +45,7 @@ router.get('/success', async (req, res) => {
     if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
 
     const { _id, role } = userExist;
-    const sessionToken = await createToken({ _id, role }, 3);
+    const sessionToken = await createToken({ _id, role }, 24);
 
     if (process.env.NODE_ENV === production) {
       res.cookie("userToken", sessionToken, {

@@ -55,7 +55,7 @@ router.post('/', async (req, res) => {
       _id: userCreated._id,
       role: userCreated.role,
     };
-    const token = await createToken(tokenData, 3);
+    const token = await createToken(tokenData, 24);
 
     res.cookie("userToken", token, {
       httpOnly: true,

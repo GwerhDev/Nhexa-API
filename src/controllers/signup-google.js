@@ -61,7 +61,7 @@ router.get('/success', async (req, res) => {
 
     const newUser = await userSchema.create(userDataToSave);
 
-    const authToken = await createToken({ _id: newUser._id, role: newUser.role }, 3);
+    const authToken = await createToken({ _id: newUser._id, role: newUser.role }, 24);
 
     res.cookie("userToken", authToken, {
       httpOnly: true,

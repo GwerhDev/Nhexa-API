@@ -24,7 +24,7 @@ export const appList = {
   ],
   admin: [
     {
-      url: "https://ui.streamby.nhexa.cl",
+      url: "https://streamby.nhexa.cl",
       label: "Streamby",
       route: "#",
       description: "Gestor de contenido",

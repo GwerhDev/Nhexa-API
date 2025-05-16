@@ -5,7 +5,7 @@ export const appList = {
       label: "Spectra",
       route: "#",
       description: "Streaming",
-      icon: null
+      icon: "https://streamby.s3.sa-east-1.amazonaws.com/6826ade224186d06a0683b2d%2Fproject-image"
     },
     {
       url: "https://spellcast.nhexa.cl",
@@ -28,13 +28,13 @@ export const appList = {
       label: "Streamby",
       route: "#",
       description: "Gestor de contenido",
-      icon: null
+      icon: "https://streamby.s3.sa-east-1.amazonaws.com/6826af8fe0e42c69e2fa9d1d%2Fproject-image"
     }, {
       url: "https://spectra.nhexa.cl",
       label: "Spectra",
       route: "#",
       description: "Streaming",
-      icon: null
+      icon: "https://streamby.s3.sa-east-1.amazonaws.com/6826ade224186d06a0683b2d%2Fproject-image"
     }, {
       url: "https://spellcast.nhexa.cl",
       label: "Spellcast",

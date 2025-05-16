@@ -21,35 +21,19 @@ export const nhexaMenu = [
     label: "Departamentos",
     submenu: [
       {
-        label: "La Ruina Records",
-        description: "Estudio de Sonido",
-        icon: laruinarecordsIcon,
-        href: "https://laruina.cl"
+        label: "Animación",
+        description: "Audiovisual, Diseño, Sonido",
+        icon: null,
+        route: "/animation"
       }, {
-        label: "El Umbral Studios",
-        description: "Estudio de diseño y animación 3D",
-        icon: elumbralstudiosIcon,
-        href: "#"
-      }, {
-        label: "TerminalCore Labs",
-        description: "Desarrollo de Software",
-        icon: terminalcoreIcon,
-        href: "https://terminalcore.cl"
-      }, {
-        label: "TerminalKiller Systems",
+        label: "Tecnología",
         description: "Ciberseguridad",
-        icon: terminalkillersystemsIcon,
-        href: "https://terminalkiller.cl"
+        icon: null,
+        route: "/technology"
       }
     ]
   }, {
     label: "Aplicaciones",
     submenu: appList.user
-  }, {
-    label: "Soporte técnico",
-    href: "#",
-  }, {
-    label: "Contacto",
-    route: "/contact",
-  }
+  },
 ];

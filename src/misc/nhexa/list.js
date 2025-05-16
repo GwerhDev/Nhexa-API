@@ -22,12 +22,12 @@ export const nhexaMenu = [
     submenu: [
       {
         label: "Animación",
-        description: "Audiovisual, Diseño, Sonido",
+        description: "Audiovisual & Diseño",
         icon: null,
         route: "/animation"
       }, {
         label: "Tecnología",
-        description: "Ciberseguridad",
+        description: "Software & Ciberseguridad",
         icon: null,
         route: "/technology"
       }

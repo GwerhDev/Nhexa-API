@@ -1,11 +1,19 @@
 const mongoose = require("mongoose");
 const { decodeToken } = require("./jwt");
-const { createStreamByRouter, createMongoProjectProvider, initProjectModel } = require("streamby-core");
+const { createStreamByRouter, createMongoProjectProvider, initProjectModel, createS3Adapter } = require("streamby-core");
 const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey } = require("../config");
 const userSchema = require("../models/User");
 
 const ProjectModel = initProjectModel(mongoose.connection);
-const projectProvider = createMongoProjectProvider(ProjectModel);
+
+const adapter = createS3Adapter({
+  bucket: awsBucket,
+  region: awsBucketRegion,
+  accessKeyId: awsAccessKey,
+  secretAccessKey: awsSecretKey,
+});
+
+const projectProvider = createMongoProjectProvider(ProjectModel, adapter);
 
 module.exports = () => createStreamByRouter({
   storageProvider: {

@@ -1,41 +1,38 @@
-const mongoose = require("mongoose");
 const { decodeToken } = require("./jwt");
-const { createStreamByRouter, createMongoProjectProvider, initProjectModel, createS3Adapter } = require("streamby-core");
-const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey } = require("../config");
+const { createStreamByRouter } = require("streamby-core");
+const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString } = require("../config");
 const userSchema = require("../models/User");
 
-const ProjectModel = initProjectModel(mongoose.connection);
+const authProvider = async (req) => {
+  const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')[1];
+  const decoded = await decodeToken(userToken);
+  const user = await userSchema.findById(decoded.data._id);
 
-const adapter = createS3Adapter({
-  bucket: awsBucket,
-  region: awsBucketRegion,
-  accessKeyId: awsAccessKey,
-  secretAccessKey: awsSecretKey,
-});
-
-const projectProvider = createMongoProjectProvider(ProjectModel, adapter);
+  return {
+    role: user.role,
+    userId: user._id,
+    username: user.username,
+    profilePic: user.profilePic || user.googlePic
+  };
+};
 
 module.exports = () => createStreamByRouter({
-  storageProvider: {
-    type: 's3',
-    config: {
-      bucket: awsBucket,
-      region: awsBucketRegion,
-      accessKeyId: awsAccessKey,
-      secretAccessKey: awsSecretKey,
+  authProvider,
+  databases: [
+    {
+      dbType: 'mongo',
+      connectionString: mongodbString,
     }
-  },
-  authProvider: async (req) => {
-    const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')[1];
-    const decoded = await decodeToken(userToken);
-    const user = await userSchema.findById(decoded.data._id);
-
-    return {
-      role: user.role,
-      userId: user._id,
-      username: user.username,
-      profilePic: user.profilePic || user.googlePic
-    };
-  },
-  projectProvider
+  ],
+  storageProviders: [
+    {
+      type: 's3',
+      config: {
+        bucket: awsBucket,
+        region: awsBucketRegion,
+        accessKeyId: awsAccessKey,
+        secretAccessKey: awsSecretKey,
+      }
+    }
+  ]
 });

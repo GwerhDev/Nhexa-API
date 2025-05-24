@@ -23,7 +23,7 @@
     "morgan": "^1.10.0",
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
-    "streamby-core": "0.12.3"
+    "streamby-core": "0.13.0"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.4.9",

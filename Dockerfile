@@ -12,13 +12,18 @@ WORKDIR /app
 # Set production environment
 ENV NODE_ENV="production"
 
+# Install system dependencies (OpenSSL, ca-certificates) in base image
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Throw-away build stage to reduce size of final image
 FROM base as build
 
 # Install packages needed to build node modules
 RUN apt-get update -qq && \
-    apt-get install -y build-essential pkg-config python-is-python3
+    apt-get install -y --no-install-recommends build-essential pkg-config python-is-python3 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install node modules
 COPY --link package-lock.json package.json ./
@@ -27,6 +32,8 @@ RUN npm ci
 # Copy application code
 COPY --link . .
 
+# ✅ Generar cliente Prisma dentro del contenedor usando la env real
+RUN npx prisma generate
 
 # Final stage for app image
 FROM base

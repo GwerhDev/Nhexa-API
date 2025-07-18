@@ -1,3 +1,6 @@
 node_modules/
 db.txt
 credentials.json
+ssh
+ssh-cert.pub
+generated/

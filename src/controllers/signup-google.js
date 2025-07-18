@@ -3,11 +3,12 @@ const router = express.Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
 
-const userSchema = require("../models/User");
+const { prisma } = require("../integrations/prisma");
 const { signupGoogle } = require("../integrations/google");
 const { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList, privateSecret } = require("../config");
 const { status, methods, roles } = require("../misc/consts-user-model");
 const { createToken } = require("../integrations/jwt");
+const { production } = require("../misc/consts");
 
 passport.use('signup-google', signupGoogle);
 
@@ -32,17 +33,16 @@ router.get('/callback', (req, res, next) => {
 
 router.get('/success', async (req, res) => {
   try {
-    const { token } = req.query;
+    const { token } = req.query || {};
     if (!token) return res.redirect(`${clientAccountsUrl}/register/failed`);
 
-    const { userData, callback } = jwt.verify(token, privateSecret);
+    const { userData } = jwt.verify(token, privateSecret);
 
-    const existingUser = await userSchema.findOne({ email: userData.email });
-    if (existingUser) {
-      return res.redirect(`${clientAccountsUrl}/account/already-exists`);
-    }
+    const existingUser = await prisma.user.findFirst({ where: { email: userData.email } });
 
-    const userDataToSave = {
+    if (existingUser) return res.redirect(`${clientAccountsUrl}/account/already-exists`);
+
+    const userDataToCreate = {
       username: userData.username ?? defaultUsername,
       password: defaultPassword,
       email: userData.email,
@@ -52,35 +52,20 @@ router.get('/success', async (req, res) => {
       googleId: userData.googleId,
       googlePic: userData.photo ?? null,
       role: roles.user,
-      status: status.active,
     };
 
-    if (adminEmailList?.includes(userData.email)) {
-      userDataToSave.role = roles.admin;
-    }
+    if (adminEmailList?.includes(userData.email)) userDataToCreate.role = roles.admin;
+    await prisma.user.create({ data: userDataToCreate });
 
-    const newUser = await userSchema.create(userDataToSave);
-
-    const authToken = await createToken({ _id: newUser._id, role: newUser.role }, 24);
-
-    res.cookie("userToken", authToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      domain: ".nhexa.cl",
-      path: "/",
-      maxAge: 24 * 60 * 60 * 1000
-    });
-
-    return res.redirect(`${callback}/register/success`);
+    return res.redirect(`${clientAccountsUrl}/register/success`);
 
   } catch (error) {
-    return res.status(500).redirect(`${clientAccountsUrl}/register/failed`);
+    return res.status(500).redirect(`${clientAccountsUrl}/register/failed?status=500`);
   }
 });
 
 router.get('/failure', (req, res) => {
-  return res.status(400).redirect(`${clientAccountsUrl}/register/failed`);
+  return res.status(400).redirect(`${clientAccountsUrl}/register/failed?status=500`);
 });
 
 module.exports = router;

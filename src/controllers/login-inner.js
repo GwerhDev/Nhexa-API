@@ -1,13 +1,14 @@
 const router = require("express").Router();
 const { createToken } = require("../integrations/jwt");
 const { message } = require("../messages");
-const userSchema = require("../models/User");
+const { prisma } = require("../integrations/prisma");
 const bcrypt = require("bcrypt");
+const { production } = require("../misc/consts");
 
 router.post("/", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await userSchema.findOne({ email });
+    const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
       return res.status(400).send({ logged: false, message: message.login.failure });
@@ -16,10 +17,11 @@ router.post("/", async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (passwordMatch) {
-      const { _id, role } = user;
-      const data = { _id, role };
+      const { id, role } = user;
+      const data = { id, role };
       const token = await createToken(data, 24);
 
+    if (process.env.NODE_ENV === production) {
       res.cookie("userToken", token, {
         httpOnly: true,
         secure: true,
@@ -28,6 +30,15 @@ router.post("/", async (req, res) => {
         path: "/",
         maxAge: 24 * 60 * 60 * 1000
       });
+    } else {
+      res.cookie("userToken", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "Lax",
+        path: "/",
+        maxAge: 24 * 60 * 60 * 1000
+      });
+    }
 
       return res.status(200).send({ logged: true, message: message.login.success, token });
     } else {

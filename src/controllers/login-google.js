@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-const userSchema = require("../models/User");
+const { prisma } = require("../integrations/prisma");
 const { clientAccountsUrl, privateSecret } = require("../config");
 const { createToken } = require("../integrations/jwt");
 const { loginGoogle } = require("../integrations/google");
@@ -41,11 +41,11 @@ router.get('/success', async (req, res) => {
 
     const userData = jwt.verify(token, privateSecret);
 
-    const userExist = await userSchema.findOne({ email: userData.email });
+    const userExist = await prisma.user.findUnique({ where: { email: userData.email } });
     if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
 
-    const { _id, role } = userExist;
-    const sessionToken = await createToken({ _id, role }, 24);
+    const { id, role } = userExist;
+    const sessionToken = await createToken({ id, role }, 24);
 
     if (process.env.NODE_ENV === production) {
       res.cookie("userToken", sessionToken, {
@@ -65,7 +65,6 @@ router.get('/success', async (req, res) => {
         maxAge: 24 * 60 * 60 * 1000
       });
     }
-
 
     return res.redirect(next);
 

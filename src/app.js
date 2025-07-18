@@ -11,6 +11,7 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 
 const { privateSecret, allwedOrigins } = require("./config");
+const { production } = require("./misc/consts");
 const createStreamByRouter = require("./integrations/streamby");
 
 server.use((req, res, next) => {
@@ -41,8 +42,8 @@ server.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    sameSite: 'None',
-    secure: true,
+    sameSite: process.env.NODE_ENV === production ? 'None' : 'Lax',
+    secure: process.env.NODE_ENV === production ? true : false,
     domain: '.nhexa.cl'
   }
 }));

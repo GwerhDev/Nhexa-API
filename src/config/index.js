@@ -9,6 +9,7 @@ module.exports = {
   adminEmailList: process.env.ADMIN_EMAIL_LIST,
 
   mongodbString: process.env.MONGODB_STRING,
+  supabaseString: process.env.SUPABASE_STRING,
 
   privateSecret: process.env.PRIVATE_SECRET,
   defaultPassword: process.env.DEFAULT_PASSWORD,

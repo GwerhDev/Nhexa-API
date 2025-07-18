@@ -2,7 +2,7 @@ const router = require("express").Router();
 const { message } = require("../messages");
 const { decodeToken } = require("../integrations/jwt");
 const bcrypt = require("bcrypt");
-const userSchema = require("../models/User");
+const { prisma } = require("../integrations/prisma");
 
 router.get("/", async (req, res) => {
   try {
@@ -10,12 +10,12 @@ router.get("/", async (req, res) => {
     if (!userToken) return res.status(401).send({ logged: false, message: message.user.unauthorized });
 
     const decodedToken = await decodeToken(userToken);
-    const user = await userSchema.findById(decodedToken.data._id);
+    const user = await prisma.user.findUnique({ where: { id: decodedToken.data?.id } });
 
     if (!user) return res.status(404).send({ logged: false, message: message.user.notfound });
 
     const userData = {
-      _id: user._id,
+      id: user.id,
       username: user.username,
       email: user.email,
       isVerified: user.isVerified,
@@ -38,21 +38,21 @@ router.patch("/update/:id", async (req, res) => {
   if (!userToken) return res.status(403).json({ message: message.admin.permissionDenied });
 
   const decodedToken = await decodeToken(userToken);
-  const user = await userSchema.findById(decodedToken.data?._id);
+  const user = await prisma.user.findUnique({ where: { id: decodedToken.data?.id } });
 
   if (!user) return res.status(404).send({ logged: false, message: message.user.notfound });
 
-  if (!user._id.equals(id)) return res.status(403).json({ message: message.admin.permissionDenied });
+  if (user.id !== id) return res.status(403).json({ message: message.admin.permissionDenied });
 
   try {
-    const existingUser = await userSchema.findById(id);
+    const existingUser = await prisma.user.findUnique({ where: { id } });
     if (!existingUser) return res.status(404).json({ message: message.admin.updateuser.failure });
 
     const salt = await bcrypt.genSalt();
 
     if (body?.password) body.password = await bcrypt.hash(body.password, salt);
 
-    await userSchema.findByIdAndUpdate(id, body);
+    await prisma.user.update({ where: { id }, data: body });
 
     return res.status(200).json({ message: message.admin.updateuser.success });
   } catch (error) {

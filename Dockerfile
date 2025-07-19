@@ -32,9 +32,6 @@ RUN npm ci
 # Copy application code
 COPY --link . .
 
-# ✅ Generar cliente Prisma dentro del contenedor usando la env real
-RUN npx prisma generate
-
 # Final stage for app image
 FROM base
 

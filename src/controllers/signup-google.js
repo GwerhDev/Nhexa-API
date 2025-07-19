@@ -38,7 +38,7 @@ router.get('/success', async (req, res) => {
 
     const { userData } = jwt.verify(token, privateSecret);
 
-    const existingUser = await prisma.user.findFirst({ where: { email: userData.email } });
+    const existingUser = await prisma.user.findUnique({ where: { email: userData.email } });
 
     if (existingUser) return res.redirect(`${clientAccountsUrl}/account/already-exists`);
 

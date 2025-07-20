@@ -20,11 +20,11 @@ module.exports = () => createStreamByRouter({
   authProvider,
   databases: [
     {
-      dbType: 'mongo',
+      dbType: 'nosql',
       connectionString: mongodbString,
     },
     {
-      dbType: 'postgres',
+      dbType: 'sql',
       connectionString: supabaseString,
     }
   ],

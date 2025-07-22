@@ -1,4 +1,4 @@
-export const appList = {
+const appList = {
   user: [
     {
       url: "https://spectra.nhexa.cl",
@@ -32,3 +32,4 @@ export const appList = {
     },
   ]
 };
+module.exports = { appList };

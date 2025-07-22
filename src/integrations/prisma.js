@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
@@ -17,4 +17,4 @@ async function disconnect() {
   console.log("Disconnected from Supabase (Prisma)");
 }
 
-export { prisma, connect, disconnect };
+module.exports = { prisma, connect, disconnect };

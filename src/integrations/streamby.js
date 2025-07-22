@@ -1,6 +1,5 @@
 const { decodeToken } = require("./jwt");
 const { createStreamByRouter } = require("streamby-core");
-const { registerModel } = require("streamby-core/dist/models/manager");
 const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, supabaseString } = require("../config");
 
 const authProvider = async (req) => {

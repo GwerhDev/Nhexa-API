@@ -3,8 +3,9 @@ const { createStreamByRouter } = require("streamby-core");
 const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, supabaseString } = require("../config");
 
 const authProvider = async (req) => {
-  const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')[1];
+  const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
   const decoded = await decodeToken(userToken);
+  console.log("Decoded token: ", decoded);
   const user = await prisma.user.findUnique({ where: { id: decoded.data.id } });
   console.log("User from Prisma:", user);
 

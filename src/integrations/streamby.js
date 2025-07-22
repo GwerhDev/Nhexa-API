@@ -16,9 +16,6 @@ const authProvider = async (req) => {
   };
 };
 
-registerModel('Project', ['mongo', 'postgres'], 'projects');
-registerModel('Export', ['mongo', 'postgres'], 'exports');
-
 module.exports = () => createStreamByRouter({
   authProvider,
   databases: [

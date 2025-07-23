@@ -7,7 +7,7 @@
     "start": "node src/index.js",
     "postinstall": "npx prisma generate",
     "dev": "nodemon",
-    "fly:release": "npx prisma db push"
+    "fly:release": "npx prisma db push --accept-data-loss"
   },
   "keywords": [],
   "author": "",

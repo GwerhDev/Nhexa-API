@@ -7,7 +7,7 @@
     "start": "node src/index.js",
     "postinstall": "npx prisma generate",
     "dev": "nodemon",
-    "fly:release": "npx prisma migrate deploy"
+    "fly:release": "npx prisma db push"
   },
   "keywords": [],
   "author": "",

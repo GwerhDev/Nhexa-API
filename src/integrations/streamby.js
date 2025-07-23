@@ -7,7 +7,6 @@ const authProvider = async (req) => {
   const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
   const decoded = await decodeToken(userToken);
   const user = await prisma.users.findUnique({ where: { id: decoded.data.id } });
-  console.log(user);
 
   const authObject = {
     role: user.role,
@@ -25,11 +24,6 @@ module.exports = () => createStreamByRouter({
       id: 'mongo',
       type: 'nosql',
       connectionString: mongodbString,
-    },
-    {
-      id: 'postgres',
-      type: 'sql',
-      connectionString: supabaseString,
     }
   ],
   storageProviders: [

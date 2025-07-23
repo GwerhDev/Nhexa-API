@@ -24,6 +24,10 @@ module.exports = () => createStreamByRouter({
       id: 'mongo',
       type: 'nosql',
       connectionString: mongodbString,
+    }, {
+      id: 'supabase',
+      type: 'sql',
+      connectionString: supabaseString,
     }
   ],
   storageProviders: [

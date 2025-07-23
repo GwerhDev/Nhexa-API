@@ -5,9 +5,7 @@ const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, s
 const authProvider = async (req) => {
   const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
   const decoded = await decodeToken(userToken);
-  console.log("Decoded token: ", decoded);
-  const user = await prisma.user.findUnique({ where: { id: decoded.data.id } });
-  console.log("User from Prisma:", user);
+  const user = await prisma.users.findUnique({ where: { id: decoded.data.id } });
 
   const authObject = {
     role: user.role,
@@ -15,7 +13,6 @@ const authProvider = async (req) => {
     username: user.username,
     profilePic: user.profilePic || user.googlePic
   };
-  console.log("Auth Object returned:", authObject);
   return authObject;
 };
 

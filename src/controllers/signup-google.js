@@ -38,7 +38,7 @@ router.get('/success', async (req, res) => {
 
     const { userData } = jwt.verify(token, privateSecret);
 
-    const existingUser = await prisma.user.findUnique({ where: { email: userData.email } });
+    const existingUser = await prisma.users.findUnique({ where: { email: userData.email } });
 
     if (existingUser) return res.redirect(`${clientAccountsUrl}/account/already-exists`);
 
@@ -55,7 +55,7 @@ router.get('/success', async (req, res) => {
     };
 
     if (adminEmailList?.includes(userData.email)) userDataToCreate.role = roles.admin;
-    await prisma.user.create({ data: userDataToCreate });
+    await prisma.users.create({ data: userDataToCreate });
 
     return res.redirect(`${clientAccountsUrl}/register/success`);
 

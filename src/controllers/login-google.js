@@ -41,7 +41,7 @@ router.get('/success', async (req, res) => {
 
     const userData = jwt.verify(token, privateSecret);
 
-    const userExist = await prisma.user.findUnique({ where: { email: userData.email } });
+    const userExist = await prisma.users.findUnique({ where: { email: userData.email } });
     if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
 
     const { id, role } = userExist;

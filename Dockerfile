@@ -27,6 +27,7 @@ RUN apt-get update -qq && \
 
 # Install node modules
 COPY --link package-lock.json package.json ./
+COPY --link prisma ./prisma
 RUN npm ci
 
 # Copy application code
@@ -40,4 +41,4 @@ COPY --from=build /app /app
 
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma db push && npm run start"]
+CMD ["npm", "run", "start"]

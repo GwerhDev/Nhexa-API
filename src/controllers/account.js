@@ -10,7 +10,7 @@ router.get("/", async (req, res) => {
     if (!userToken) return res.status(401).send({ logged: false, message: message.user.unauthorized });
 
     const decodedToken = await decodeToken(userToken);
-    const user = await prisma.user.findUnique({ where: { id: decodedToken.data?.id } });
+    const user = await prisma.users.findUnique({ where: { id: decodedToken.data?.id } });
 
     if (!user) return res.status(404).send({ logged: false, message: message.user.notfound });
 
@@ -38,21 +38,21 @@ router.patch("/update/:id", async (req, res) => {
   if (!userToken) return res.status(403).json({ message: message.admin.permissionDenied });
 
   const decodedToken = await decodeToken(userToken);
-  const user = await prisma.user.findUnique({ where: { id: decodedToken.data?.id } });
+  const user = await prisma.users.findUnique({ where: { id: decodedToken.data?.id } });
 
   if (!user) return res.status(404).send({ logged: false, message: message.user.notfound });
 
   if (user.id !== id) return res.status(403).json({ message: message.admin.permissionDenied });
 
   try {
-    const existingUser = await prisma.user.findUnique({ where: { id } });
+    const existingUser = await prisma.users.findUnique({ where: { id } });
     if (!existingUser) return res.status(404).json({ message: message.admin.updateuser.failure });
 
     const salt = await bcrypt.genSalt();
 
     if (body?.password) body.password = await bcrypt.hash(body.password, salt);
 
-    await prisma.user.update({ where: { id }, data: body });
+    await prisma.users.update({ where: { id }, data: body });
 
     return res.status(200).json({ message: message.admin.updateuser.success });
   } catch (error) {

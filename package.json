@@ -4,8 +4,10 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "start": "npx prisma generate && node src/index.js",
-    "dev": "nodemon"
+    "start": "node src/index.js",
+    "postinstall": "npx prisma generate",
+    "dev": "nodemon",
+    "fly:release": "npx prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
@@ -25,7 +27,7 @@
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.16.3",
-    "streamby-core": "0.20.2"
+    "streamby-core": "0.21.0"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.4.9",

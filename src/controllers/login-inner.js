@@ -8,7 +8,7 @@ const { production } = require("../misc/consts");
 router.post("/", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.users.findUnique({ where: { email } });
 
     if (!user) {
       return res.status(400).send({ logged: false, message: message.login.failure });

@@ -13,7 +13,7 @@ router.post('/', async (req, res) => {
 
     if (!username || !password || !email) return res.status(400).send({ error: message.signup.error });
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.users.findUnique({ where: { email } });
     if (existingUser) return res.status(409).send({ logged: false, message: message.signup.alreadyExists });
 
     const salt = await bcrypt.genSalt();
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
     };
 
     if (adminEmailList?.includes(userData.email)) userDataToCreate.role = roles.admin;
-    await prisma.user.create({ data: userDataToCreate });
+    await prisma.users.create({ data: userDataToCreate });
 
     return res.status(200).send({ logged: true, message: message.signup.success, token });
 

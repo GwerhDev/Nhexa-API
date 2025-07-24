@@ -27,6 +27,7 @@ module.exports = () => createStreamByRouter({
     }, {
       id: 'supabase',
       type: 'sql',
+      main: true,
       connectionString: supabaseString,
     }
   ],

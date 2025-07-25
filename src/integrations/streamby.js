@@ -5,7 +5,6 @@ const { supabase } = require("./supabase");
 
 const authProvider = async (req) => {
   const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
-  console.log(userToken)
   const decoded = await decodeToken(userToken);
   const { data: user, error } = await supabase.from('users').select('*').eq('id', decoded.data.id).single();
 

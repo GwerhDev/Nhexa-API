@@ -3,7 +3,7 @@ const router = express.Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
 
-const { prisma } = require("../integrations/prisma");
+const { supabase } = require("../integrations/supabase");
 const { signupGoogle } = require("../integrations/google");
 const { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList, privateSecret } = require("../config");
 const { status, methods, roles } = require("../misc/consts-user-model");
@@ -38,7 +38,7 @@ router.get('/success', async (req, res) => {
 
     const { userData } = jwt.verify(token, privateSecret);
 
-    const existingUser = await prisma.users.findUnique({ where: { email: userData.email } });
+    const { data: existingUser, error: existingUserError } = await supabase.from('users').select('*').eq('email', userData.email).single();
 
     if (existingUser) return res.redirect(`${clientAccountsUrl}/account/already-exists`);
 
@@ -55,7 +55,9 @@ router.get('/success', async (req, res) => {
     };
 
     if (adminEmailList?.includes(userData.email)) userDataToCreate.role = roles.admin;
-    await prisma.users.create({ data: userDataToCreate });
+    const { error: createError } = await supabase.from('users').insert([userDataToCreate]);
+
+    if (createError) throw createError;
 
     return res.redirect(`${clientAccountsUrl}/register/success`);
 

@@ -1,16 +1,16 @@
 const router = require("express").Router();
 const { createToken } = require("../integrations/jwt");
 const { message } = require("../messages");
-const { prisma } = require("../integrations/prisma");
+const { supabase } = require("../integrations/supabase");
 const bcrypt = require("bcrypt");
 const { production } = require("../misc/consts");
 
 router.post("/", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await prisma.users.findUnique({ where: { email } });
+    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).single();
 
-    if (!user) {
+    if (error || !user) {
       return res.status(400).send({ logged: false, message: message.login.failure });
     }
 

@@ -1,12 +1,15 @@
 const { decodeToken } = require("./jwt");
 const { createStreamByRouter } = require("streamby-core");
 const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, supabaseString } = require("../config");
-const { prisma } = require("./prisma");
+const { supabase } = require("./supabase");
 
 const authProvider = async (req) => {
   const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
+  console.log(userToken)
   const decoded = await decodeToken(userToken);
-  const user = await prisma.users.findUnique({ where: { id: decoded.data.id } });
+  const { data: user, error } = await supabase.from('users').select('*').eq('id', decoded.data.id).single();
+
+  if (error) throw new Error("User not found");
 
   const authObject = {
     role: user.role,
@@ -14,6 +17,7 @@ const authProvider = async (req) => {
     username: user.username,
     profilePic: user.profilePic || user.googlePic
   };
+
   return authObject;
 };
 

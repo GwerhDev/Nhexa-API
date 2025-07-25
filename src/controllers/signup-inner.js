@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const { message } = require("../messages");
 const { production } = require("../misc/consts");
 const { roles, methods } = require("../misc/consts-user-model");
-const { prisma } = require("../integrations/prisma");
+const { supabase } = require("../integrations/supabase");
 const { createToken } = require("../integrations/jwt");
 
 router.post('/', async (req, res) => {
@@ -13,26 +13,29 @@ router.post('/', async (req, res) => {
 
     if (!username || !password || !email) return res.status(400).send({ error: message.signup.error });
 
-    const existingUser = await prisma.users.findUnique({ where: { email } });
+    const { data: existingUser, error: existingUserError } = await supabase.from('users').select('*').eq('email', email).single();
     if (existingUser) return res.status(409).send({ logged: false, message: message.signup.alreadyExists });
 
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const userDataToCreate = {
-      username: userData.username ?? defaultUsername,
+      username: username,
       password: hashedPassword,
-      email: userData.email,
+      email: email,
       profilePic: null,
       isVerified: true,
-      method: methods.google,
-      googleId: userData.googleId,
-      googlePic: userData.photo ?? null,
+      method: methods.inner,
       role: roles.user,
     };
 
-    if (adminEmailList?.includes(userData.email)) userDataToCreate.role = roles.admin;
-    await prisma.users.create({ data: userDataToCreate });
+    if (adminEmailList?.includes(email)) userDataToCreate.role = roles.admin;
+    const { data: newUser, error: createError } = await supabase.from('users').insert([userDataToCreate]).select().single();
+
+    if (createError) throw createError;
+
+    const { id, role } = newUser;
+    const token = await createToken({ id, role }, 24);
 
     return res.status(200).send({ logged: true, message: message.signup.success, token });
 

@@ -5,14 +5,13 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "postinstall": "npx prisma generate",
     "dev": "nodemon"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.12.0",
+    "@supabase/supabase-js": "^2.52.1",
     "bcrypt": "^5.0.1",
     "cookie-parser": "^1.4.6",
     "cookie-session": "^2.0.0",
@@ -30,7 +29,6 @@
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.4.9",
-    "nodemon": "^3.1.10",
-    "prisma": "^6.12.0"
+    "nodemon": "^3.1.10"
   }
 }

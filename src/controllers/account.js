@@ -2,7 +2,7 @@ const router = require("express").Router();
 const { message } = require("../messages");
 const { decodeToken } = require("../integrations/jwt");
 const bcrypt = require("bcrypt");
-const { prisma } = require("../integrations/prisma");
+const { supabase } = require("../integrations/supabase");
 
 router.get("/", async (req, res) => {
   try {
@@ -10,9 +10,9 @@ router.get("/", async (req, res) => {
     if (!userToken) return res.status(401).send({ logged: false, message: message.user.unauthorized });
 
     const decodedToken = await decodeToken(userToken);
-    const user = await prisma.users.findUnique({ where: { id: decodedToken.data?.id } });
+    const { data: user, error } = await supabase.from('users').select('*').eq('id', decodedToken.data?.id).single();
 
-    if (!user) return res.status(404).send({ logged: false, message: message.user.notfound });
+    if (error || !user) return res.status(404).send({ logged: false, message: message.user.notfound });
 
     const userData = {
       id: user.id,
@@ -37,25 +37,28 @@ router.patch("/update/:id", async (req, res) => {
 
   if (!userToken) return res.status(403).json({ message: message.admin.permissionDenied });
 
-  const decodedToken = await decodeToken(userToken);
-  const user = await prisma.users.findUnique({ where: { id: decodedToken.data?.id } });
-
-  if (!user) return res.status(404).send({ logged: false, message: message.user.notfound });
-
-  if (user.id !== id) return res.status(403).json({ message: message.admin.permissionDenied });
-
   try {
-    const existingUser = await prisma.users.findUnique({ where: { id } });
-    if (!existingUser) return res.status(404).json({ message: message.admin.updateuser.failure });
+    const decodedToken = await decodeToken(userToken);
+    const { data: user, error: userError } = await supabase.from('users').select('*').eq('id', decodedToken.data?.id).single();
+
+    if (userError || !user) return res.status(404).send({ logged: false, message: message.user.notfound });
+
+    if (user.id !== id) return res.status(403).json({ message: message.admin.permissionDenied });
+
+    const { data: existingUser, error: existingUserError } = await supabase.from('users').select('*').eq('id', id).single();
+    if (existingUserError || !existingUser) return res.status(404).json({ message: message.admin.updateuser.failure });
 
     const salt = await bcrypt.genSalt();
 
     if (body?.password) body.password = await bcrypt.hash(body.password, salt);
 
-    await prisma.users.update({ where: { id }, data: body });
+    const { error: updateError } = await supabase.from('users').update(body).eq('id', id);
+
+    if (updateError) throw updateError;
 
     return res.status(200).json({ message: message.admin.updateuser.success });
   } catch (error) {
+    console.error(error); // For debugging
     return res.status(500).send({ error: message.admin.updateuser.error });
   }
 });

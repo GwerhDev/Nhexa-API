@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-const { prisma } = require("../integrations/prisma");
+const { supabase } = require("../integrations/supabase");
 const { clientAccountsUrl, privateSecret } = require("../config");
 const { createToken } = require("../integrations/jwt");
 const { loginGoogle } = require("../integrations/google");
@@ -41,8 +41,8 @@ router.get('/success', async (req, res) => {
 
     const userData = jwt.verify(token, privateSecret);
 
-    const userExist = await prisma.users.findUnique({ where: { email: userData.email } });
-    if (!userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
+    const { data: userExist, error } = await supabase.from('users').select('*').eq('email', userData.email).single();
+    if (error || !userExist) return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
 
     const { id, role } = userExist;
     const sessionToken = await createToken({ id, role }, 24);

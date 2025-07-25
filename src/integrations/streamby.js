@@ -4,17 +4,27 @@ const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, s
 const { prisma } = require("./prisma");
 
 const authProvider = async (req) => {
-  const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
-  const decoded = await decodeToken(userToken);
-  const user = await prisma.users.findUnique({ where: { id: decoded.data.id } });
+  try {
+    const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
+    if (!userToken) return null;
 
-  const authObject = {
-    role: user.role,
-    userId: user.id,
-    username: user.username,
-    profilePic: user.profilePic || user.googlePic
-  };
-  return authObject;
+    const decoded = await decodeToken(userToken);
+    if (!decoded?.data?.id) return null;
+
+    const user = await prisma.users.findUnique({ where: { id: decoded.data.id } });
+    if (!user) return null;
+
+    const authObject = {
+      role: user.role,
+      userId: user.id,
+      username: user.username,
+      profilePic: user.profilePic || user.googlePic
+    };
+    return authObject;
+  } catch (error) {
+    console.error('Error in streamby auth provider:', error);
+    return null;
+  }
 };
 
 module.exports = () => createStreamByRouter({

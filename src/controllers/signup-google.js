@@ -39,9 +39,9 @@ router.get('/success', async (req, res) => {
     const { userData } = jwt.verify(token, privateSecret);
 
     const { data: existingUser, error: existingUserError } = await supabase.from('users').select('*').eq('email', userData.email).single();
-
+    
     if (existingUser) return res.redirect(`${clientAccountsUrl}/account/already-exists`);
-
+    
     const userDataToCreate = {
       username: userData.username ?? defaultUsername,
       password: defaultPassword,
@@ -53,21 +53,23 @@ router.get('/success', async (req, res) => {
       googlePic: userData.photo ?? null,
       role: roles.user,
     };
-
+    
     if (adminEmailList?.includes(userData.email)) userDataToCreate.role = roles.admin;
     const { error: createError } = await supabase.from('users').insert([userDataToCreate]);
-
+    console.log(createError);
+    
     if (createError) throw createError;
-
+    
     return res.redirect(`${clientAccountsUrl}/register/success`);
 
   } catch (error) {
+    console.error('Error detallado en signup-google:', error);
     return res.status(500).redirect(`${clientAccountsUrl}/register/failed?status=500`);
   }
 });
 
 router.get('/failure', (req, res) => {
-  return res.status(400).redirect(`${clientAccountsUrl}/register/failed?status=500`);
+  return res.status(500).redirect(`${clientAccountsUrl}/register/failed?status=500`);
 });
 
 module.exports = router;

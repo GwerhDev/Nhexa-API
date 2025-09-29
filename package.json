@@ -25,7 +25,7 @@
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.16.3",
-    "streamby-core": "^0.24.2"
+    "streamby-core": "^0.24.3"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.4.9",

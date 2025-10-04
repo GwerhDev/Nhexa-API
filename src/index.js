@@ -4,7 +4,7 @@ const { port, environment } = require("./config");
 const mongoDb = require("./integrations/mongodb");
 
 async function main() {
-  console.log(environment)
+  console.log(environment);
   try {
     await mongoDb.connect();
     

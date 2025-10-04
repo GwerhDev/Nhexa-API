@@ -1,6 +1,6 @@
 const { decodeToken } = require("./jwt");
 const { createStreamByRouter } = require("streamby-core");
-const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, supabaseString } = require("../config");
+const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, supabaseString, encryptionKey } = require("../config");
 const { supabase } = require("./supabase");
 
 const authProvider = async (req) => {
@@ -45,4 +45,5 @@ module.exports = () => createStreamByRouter({
       }
     }
   ],
+  encrypt: encryptionKey,
 });

@@ -3,6 +3,7 @@ const { production } = require("../misc/consts");
 module.exports = {
   environment: process.env.NODE_ENV,
   port: process.env.PORT,
+  encryptionKey: process.env.ENCRYPTION_KEY,
   apiUrl: process.env.NODE_ENV === production ? process.env.API_URL_PROD : process.env.API_URL,
   clientAccountsUrl: process.env.NODE_ENV === production ? process.env.CLIENT_ACCOUNTS_URL_PROD : process.env.CLIENT_ACCOUNTS_URL,
 

@@ -10,14 +10,14 @@ require("./integrations/passport");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 
-const { privateSecret, allwedOrigins } = require("./config");
+const { privateSecret, allowedOrigins } = require("./config");
 const { production } = require("./misc/consts");
 const createStreamByRouter = require("./integrations/streamby");
 
 server.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  if (allwedOrigins.includes(origin)) {
+  if (allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
   }
 

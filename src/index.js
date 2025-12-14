@@ -1,4 +1,3 @@
-require("dotenv").config();
 const server = require('./app');
 const { port, environment } = require("./config");
 const mongoDb = require("./integrations/mongodb");

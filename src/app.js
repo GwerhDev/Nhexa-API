@@ -32,8 +32,6 @@ server.use((req, res, next) => {
   next();
 });
 
-console.log(supabaseUrl)
-
 server.use(bodyParser.json({ limit: '100mb' }));
 server.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
 server.use(cookieParser());

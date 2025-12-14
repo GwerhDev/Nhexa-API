@@ -1,4 +1,3 @@
-require("dotenv").config();
 const { production } = require("../misc/consts");
 
 module.exports = {

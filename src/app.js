@@ -12,7 +12,6 @@ const cookieParser = require("cookie-parser");
 
 const { privateSecret, allowedOrigins, supabaseUrl } = require("./config");
 const { production } = require("./misc/consts");
-const createStreamByRouter = require("./integrations/streamby");
 
 server.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -49,8 +48,6 @@ server.use(session({
 }));
 server.use(passport.initialize());
 server.use(passport.session());
-
-server.use('/streamby', createStreamByRouter());
 
 server.use('/', routes);
 

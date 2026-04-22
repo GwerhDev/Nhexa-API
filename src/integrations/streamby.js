@@ -1,5 +1,6 @@
 const http = require('http');
 const express = require('express');
+const { WebSocketServer } = require('ws');
 const { decodeToken } = require("./jwt");
 const { createStreamByRouter } = require("streamby-core");
 const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, supabaseString, encryptionKey } = require("../config");
@@ -24,6 +25,7 @@ const authProvider = async (req) => {
 
 module.exports = (app) => {
   const server = http.createServer(app);
+  const wss = new WebSocketServer({ server, path: '/streamby/ws' });
 
   const streambyRouter = createStreamByRouter({
     authProvider,
@@ -52,8 +54,7 @@ module.exports = (app) => {
     ],
     encrypt: encryptionKey,
     websocket: {
-      server,
-      path: '/ws',
+      server: wss,
     },
   });
 

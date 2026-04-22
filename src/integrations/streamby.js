@@ -1,5 +1,6 @@
 const http = require('http');
 const express = require('express');
+const cookie = require('cookie');
 const { WebSocketServer } = require('ws');
 const { decodeToken } = require("./jwt");
 const { createStreamByRouter } = require("streamby-core");
@@ -7,7 +8,8 @@ const { awsBucket, awsBucketRegion, awsAccessKey, awsSecretKey, mongodbString, s
 const { supabase } = require("./supabase");
 
 const authProvider = async (req) => {
-  const userToken = req.cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
+  const cookies = req.cookies ?? cookie.parse(req.headers.cookie ?? '');
+  const userToken = cookies['userToken'] || req.headers.authorization?.split(' ')?.[1];
   const decoded = await decodeToken(userToken);
   const { data: user, error } = await supabase.from('users').select('*').eq('id', decoded.data.id).single();
   

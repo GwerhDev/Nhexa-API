@@ -32,6 +32,9 @@ RUN npm ci
 # Copy application code
 COPY --link . .
 
+# Compile TypeScript
+RUN npm run build
+
 # Final stage for app image
 FROM base
 

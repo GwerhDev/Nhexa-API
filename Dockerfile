@@ -25,15 +25,18 @@ RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends build-essential pkg-config python-is-python3 && \
     rm -rf /var/lib/apt/lists/*
 
-# Install node modules
+# Install all dependencies (including devDependencies required for TypeScript compilation)
 COPY --link package-lock.json package.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 # Copy application code
 COPY --link . .
 
 # Compile TypeScript
 RUN npm run build
+
+# Remove devDependencies — dist/ is compiled, only production deps needed at runtime
+RUN npm prune --production
 
 # Final stage for app image
 FROM base

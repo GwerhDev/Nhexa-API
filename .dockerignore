@@ -1,4 +1,5 @@
 node_modules/
+dist/
 db.txt
 credentials.json
 ssh

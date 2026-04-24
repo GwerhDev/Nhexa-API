@@ -62,7 +62,8 @@ router.get('/success', async (req: Request, res: Response) => {
     setRefreshTokenCookie(res, refreshToken);
 
     return res.redirect(next);
-  } catch {
+  } catch (err) {
+    console.error('[login-google/success] error:', err);
     return res.status(500).redirect(`${clientAccountsUrl}/login/failed?status=500`);
   }
 });

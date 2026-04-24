@@ -47,7 +47,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.patch('/update/:id', validate(AccountUpdateSchema), async (req: Request, res: Response) => {
   const body = req.body as AccountUpdateInput;
   const { id } = req.params;
-  const userToken: string | undefined = req.cookies?.['userToken'];
+  const userToken: string | undefined = req.cookies?.['accessToken'];
 
   if (!userToken) {
     return res.status(403).json({ message: message.admin.permissionDenied });

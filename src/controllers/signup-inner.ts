@@ -3,7 +3,6 @@ import bcrypt from 'bcrypt';
 import { message } from '../messages';
 import { roles, methods } from '../misc/consts-user-model';
 import { supabase } from '../integrations/supabase';
-import { createToken } from '../integrations/jwt';
 import { adminEmailList } from '../config';
 import { validate } from '../middleware/validate';
 import { SignupInnerSchema, type SignupInnerInput } from '../schemas/auth';
@@ -33,7 +32,7 @@ router.post('/', validate(SignupInnerSchema), async (req: Request, res: Response
       password: hashedPassword,
       email,
       profilePic: null,
-      isVerified: true,
+      isVerified: false,
       method: methods.inner,
       role: roles.user,
     };
@@ -50,9 +49,7 @@ router.post('/', validate(SignupInnerSchema), async (req: Request, res: Response
 
     if (createError || !newUser) throw createError;
 
-    const token = await createToken({ id: newUser.id, role: newUser.role }, 24);
-
-    return res.status(200).send({ logged: true, message: message.signup.success, token });
+    return res.status(200).send({ logged: true, message: message.signup.success });
   } catch {
     return res.status(400).send({ logged: false, error: message.signup.error });
   }

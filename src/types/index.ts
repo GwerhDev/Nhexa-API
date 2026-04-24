@@ -53,7 +53,18 @@ export interface AccountResponse {
 
 export interface SessionStatus {
   loggedIn: boolean;
-  userToken?: string;
+}
+
+export interface RefreshSession {
+  id: string;
+  user_id: string;
+  user_role: UserRole;
+  token_hash: string;
+  created_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+  user_agent: string | null;
+  ip: string | null;
 }
 
 export interface AppEntry {

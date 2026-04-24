@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import { supabase } from '../integrations/supabase';
 import { clientAccountsUrl, privateSecret } from '../config';
 import { createToken } from '../integrations/jwt';
-import { production } from '../misc/consts';
+import { setAccessTokenCookie, setRefreshTokenCookie } from '../integrations/cookies';
+import { createRefreshSession, generateRefreshToken } from '../integrations/refresh-tokens';
 import type { GoogleAuthResult, GoogleUserData, UserRecord } from '../types';
 
 const router = Router();
@@ -49,26 +50,16 @@ router.get('/success', async (req: Request, res: Response) => {
       return res.status(400).redirect(`${clientAccountsUrl}/account/not-found`);
     }
 
-    const sessionToken = await createToken({ id: userExist.id, role: userExist.role }, 24);
+    const accessToken = await createToken({ id: userExist.id, role: userExist.role }, 15 / 60);
+    const refreshToken = generateRefreshToken();
 
-    if (process.env.NODE_ENV === production) {
-      res.cookie('userToken', sessionToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        domain: '.nhexa.cl',
-        path: '/',
-        maxAge: 24 * 60 * 60 * 1000,
-      });
-    } else {
-      res.cookie('userToken', sessionToken, {
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 24 * 60 * 60 * 1000,
-      });
-    }
+    await createRefreshSession(userExist.id, userExist.role, refreshToken, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    });
+
+    setAccessTokenCookie(res, accessToken);
+    setRefreshTokenCookie(res, refreshToken);
 
     return res.redirect(next);
   } catch {

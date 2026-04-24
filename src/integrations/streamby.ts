@@ -25,7 +25,7 @@ const toStreambyRole = (role: UserRole): Auth['role'] => {
 const authProvider = async (req: express.Request): Promise<Auth> => {
   const cookies = (req as any).cookies ?? cookie.parse(req.headers.cookie ?? '');
   const userToken: string =
-    cookies['userToken'] ?? req.headers.authorization?.split(' ')?.[1] ?? '';
+    cookies['accessToken'] ?? req.headers.authorization?.split(' ')?.[1] ?? '';
 
   const decoded = await decodeToken(userToken);
   const { data: user, error } = await supabase

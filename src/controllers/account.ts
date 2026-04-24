@@ -11,8 +11,8 @@ const router = Router();
 
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const userToken =
-      req.cookies['userToken'] ?? req.headers.authorization?.split(' ')[1];
+    const userToken: string | undefined =
+      req.cookies['accessToken'] ?? req.headers.authorization?.split(' ')[1];
 
     if (!userToken) {
       return res.status(401).send({ logged: false, message: message.user.unauthorized });

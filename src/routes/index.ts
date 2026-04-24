@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import logout from '../controllers/logout';
 import session from '../controllers/session';
+import refresh from '../controllers/refresh';
 import account from '../controllers/account';
 import appList from '../controllers/app-list';
 import menuList from '../controllers/menu-list';
@@ -14,6 +15,7 @@ const router = Router();
 
 router.use('/logout', logout);
 router.use('/session', session);
+router.use('/refresh', refresh);
 router.use('/account', account);
 router.use('/app-list', appList);
 router.use('/menu-list', menuList);

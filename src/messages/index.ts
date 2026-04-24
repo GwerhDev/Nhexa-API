@@ -12,6 +12,7 @@ interface Messages {
     success: string;
     failure: string;
     existinguser: string;
+    unverified: string;
     error: string;
   };
   signup: {
@@ -19,6 +20,10 @@ interface Messages {
     failure: string;
     existinguser: string;
     alreadyExists: string;
+    error: string;
+  };
+  session: {
+    expired: string;
     error: string;
   };
   user: {
@@ -73,6 +78,7 @@ export const message: Messages = {
     success: 'Login successfull',
     failure: 'Login failed',
     existinguser: 'User already exists',
+    unverified: 'Account not verified',
     error: 'Error logging in',
   },
   signup: {
@@ -81,6 +87,10 @@ export const message: Messages = {
     existinguser: 'User already exists',
     alreadyExists: 'User already exists',
     error: 'Error signing up',
+  },
+  session: {
+    expired: 'Session expired',
+    error: 'Session error',
   },
   user: {
     error: 'Error',

@@ -5,7 +5,6 @@ import * as mongoDb from './integrations/mongodb';
 import createStreamByServer from './integrations/streamby';
 
 async function main(): Promise<void> {
-  console.log(environment);
   const server = createStreamByServer(app);
 
   try {

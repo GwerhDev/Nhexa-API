@@ -12,3 +12,7 @@ CREATE TABLE IF NOT EXISTS accounts.refresh_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_refresh_sessions_user_id    ON accounts.refresh_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_sessions_token_hash ON accounts.refresh_sessions(token_hash);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON accounts.refresh_sessions TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON accounts.refresh_sessions TO authenticated;
+GRANT ALL ON accounts.refresh_sessions TO service_role;

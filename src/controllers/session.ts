@@ -21,4 +21,16 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// Used by the OAuth relay flow (ChooseAccount) to pass the token to third-party apps
+router.get('/token', async (req: Request, res: Response) => {
+  const token = req.cookies[ACCESS_TOKEN_COOKIE];
+  if (!token) return res.status(401).json({ token: null });
+  try {
+    await decodeToken(token);
+    return res.status(200).json({ token });
+  } catch {
+    return res.status(401).json({ token: null });
+  }
+});
+
 export default router;

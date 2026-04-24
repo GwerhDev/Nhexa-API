@@ -37,13 +37,13 @@ router.post('/', validate(LoginInnerSchema), async (req: Request, res: Response)
     const accessToken = await createToken({ id: user.id, role: user.role }, 15 / 60);
     const refreshToken = generateRefreshToken();
 
-    await createRefreshSession(user.id, user.role, refreshToken, {
-      userAgent: req.headers['user-agent'],
-      ip: req.ip,
-    });
-
     setAccessTokenCookie(res, accessToken);
     setRefreshTokenCookie(res, refreshToken);
+
+    createRefreshSession(user.id, user.role, refreshToken, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    }).catch((err) => console.error('[login-inner] createRefreshSession failed:', err));
 
     return res.status(200).send({ logged: true, message: message.login.success });
   } catch {

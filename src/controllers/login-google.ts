@@ -53,13 +53,13 @@ router.get('/success', async (req: Request, res: Response) => {
     const accessToken = await createToken({ id: userExist.id, role: userExist.role }, 15 / 60);
     const refreshToken = generateRefreshToken();
 
-    await createRefreshSession(userExist.id, userExist.role, refreshToken, {
-      userAgent: req.headers['user-agent'],
-      ip: req.ip,
-    });
-
     setAccessTokenCookie(res, accessToken);
     setRefreshTokenCookie(res, refreshToken);
+
+    createRefreshSession(userExist.id, userExist.role, refreshToken, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    }).catch((err) => console.error('[login-google] createRefreshSession failed:', err));
 
     return res.redirect(next);
   } catch (err) {

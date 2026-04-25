@@ -8,13 +8,14 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   const cookies = (req as any).cookies ?? cookie.parse(req.headers.cookie ?? '');
   const accessToken: string = cookies[ACCESS_TOKEN_COOKIE] ?? req.headers.authorization?.split(' ')?.[1] ?? '';
 
-  if (accessToken) {
-    try {
-      await decodeToken(accessToken);
-      return next();
-    } catch {
-      // access token expired — attempt refresh below
-    }
+  if (!accessToken) return next();
+
+  try {
+    await decodeToken(accessToken);
+    // token válido, continuar
+    return next();
+  } catch {
+    // token expirado o inválido — intentar refresh
   }
 
   const refreshToken: string = cookies[REFRESH_TOKEN_COOKIE] ?? '';
@@ -40,7 +41,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       (req as any).cookies[REFRESH_TOKEN_COOKIE] = newRefreshToken;
     }
   } catch {
-    // refresh failed — downstream handler will reject
+    // refresh fallido — el handler downstream rechazará
   }
 
   next();

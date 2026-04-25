@@ -22,7 +22,6 @@ export const supabaseKey = process.env.SUPABASE_KEY as string;
 export const supabaseString = process.env.SUPABASE_STRING as string;
 
 export const privateSecret = process.env.PRIVATE_SECRET as string;
-export const defaultPassword = process.env.DEFAULT_PASSWORD as string;
 export const defaultUsername = process.env.DEFAULT_USERNAME as string;
 
 export const awsSecret = process.env.AWS_SECRET;

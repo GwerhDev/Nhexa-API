@@ -5,7 +5,6 @@ import { decodeToken } from '../../integrations/jwt';
 import { supabase } from '../../integrations/supabase';
 import { ACCESS_TOKEN_COOKIE } from '../../integrations/cookies';
 import { UserRecord } from '../../types';
-import { defaultPassword } from '../../config';
 
 const router = Router();
 
@@ -13,16 +12,14 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const decoded = await decodeToken(req.cookies[ACCESS_TOKEN_COOKIE]);
     const { data: user, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', decoded.data.id)
-    .single<UserRecord>();
-    
+      .from('users')
+      .select('passwordSetAt')
+      .eq('id', decoded.data.id)
+      .single<Pick<UserRecord, 'passwordSetAt'>>();
+
     if (error || !user) return res.status(401).json({ message: message.user.unauthorized });
 
-    return res.status(200).json({
-      hasPassword: user.password !== defaultPassword,
-    });
+    return res.status(200).json({ passwordSetAt: user.passwordSetAt ?? null });
   } catch {
     return res.status(401).json({ message: message.user.unauthorized });
   }
@@ -42,7 +39,7 @@ router.patch('/', async (req: Request, res: Response) => {
 
     const { error } = await supabase
       .from('users')
-      .update({ password: hashed })
+      .update({ password: hashed, passwordSetAt: new Date().toISOString() })
       .eq('id', decoded.data.id);
 
     if (error) throw error;

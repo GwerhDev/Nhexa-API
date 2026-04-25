@@ -24,6 +24,10 @@ router.post('/', validate(LoginInnerSchema), async (req: Request, res: Response)
       return res.status(400).send({ logged: false, message: message.login.failure });
     }
 
+    if (!user.password) {
+      return res.status(400).send({ logged: false, message: message.login.error });
+    }
+
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {

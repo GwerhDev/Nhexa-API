@@ -2,9 +2,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../integrations/supabase';
-import { clientAccountsUrl, defaultPassword, defaultUsername, adminEmailList, privateSecret } from '../config';
+import { clientAccountsUrl, defaultUsername, adminEmailList, privateSecret } from '../config';
 import { methods, roles } from '../misc/consts-user-model';
-import { createToken } from '../integrations/jwt';
 import type { GoogleAuthResult, GoogleUserData, UserRecord } from '../types';
 
 const router = Router();
@@ -44,7 +43,6 @@ router.get('/success', async (req: Request, res: Response) => {
 
     const userDataToCreate: Partial<UserRecord> & Record<string, unknown> = {
       username: userData.username ?? defaultUsername,
-      password: defaultPassword,
       email: userData.email,
       profilePic: null,
       isVerified: true,

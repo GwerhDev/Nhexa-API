@@ -37,7 +37,6 @@ router.get('/', async (req: Request, res: Response) => {
       isVerified: user.isVerified,
       role: user.role,
       profilePic: user.profilePic ?? user.googlePic ?? null,
-      hasPassword: !!user.password,
     };
 
     return res.status(200).send({ logged: true, userData });

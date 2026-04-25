@@ -31,7 +31,7 @@ export interface UserRecord {
   id: string;
   username: string;
   email: string;
-  password: string;
+  password?: string | null;
   role: UserRole;
   method: AuthMethod;
   isVerified: boolean;
@@ -40,6 +40,13 @@ export interface UserRecord {
   profilePic?: string | null;
   created_at?: string;
   updated_at?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  birthDate?: string | null;
+  countryId?: string | null;
+  phone?: string | null;
+  phoneCode?: string | null;
+  passwordSetAt?: string | null;
 }
 
 export interface AccountResponse {
@@ -49,7 +56,16 @@ export interface AccountResponse {
   isVerified: boolean;
   role: UserRole;
   profilePic: string | null;
-  hasPassword: boolean;
+}
+
+export interface UserDetail {
+  firstName: string | null;
+  lastName: string | null;
+  birthDate: string | null;
+  countryId: string | null;
+  phone: string | null;
+  phoneCode: string | null;
+  passwordSetAt: string | null;
 }
 
 export interface DeviceSession {

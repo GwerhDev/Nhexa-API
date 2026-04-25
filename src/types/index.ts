@@ -13,6 +13,13 @@ export interface JWTClaims {
   iat?: number;
 }
 
+export interface MfaClaims {
+  mfa: true;
+  sub: string;
+  exp: number;
+  iat?: number;
+}
+
 export interface GoogleUserData {
   username: string;
   email: string;
@@ -47,6 +54,9 @@ export interface UserRecord {
   phone?: string | null;
   phoneCode?: string | null;
   passwordSetAt?: string | null;
+  twoFactorSecret?: string | null;
+  twoFactorEnabled?: boolean;
+  backupCodes?: string[] | null;
 }
 
 export interface AccountResponse {

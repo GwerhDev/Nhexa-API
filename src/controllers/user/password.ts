@@ -13,13 +13,16 @@ router.get('/', async (req: Request, res: Response) => {
     const decoded = await decodeToken(req.cookies[ACCESS_TOKEN_COOKIE]);
     const { data: user, error } = await supabase
       .from('users')
-      .select('passwordSetAt')
+      .select('passwordSetAt, twoFactorEnabled')
       .eq('id', decoded.data.id)
-      .single<Pick<UserRecord, 'passwordSetAt'>>();
+      .single<Pick<UserRecord, 'passwordSetAt' | 'twoFactorEnabled'>>();
 
     if (error || !user) return res.status(401).json({ message: message.user.unauthorized });
 
-    return res.status(200).json({ passwordSetAt: user.passwordSetAt ?? null });
+    return res.status(200).json({
+      passwordSetAt: user.passwordSetAt ?? null,
+      twoFactorEnabled: user.twoFactorEnabled ?? false,
+    });
   } catch {
     return res.status(401).json({ message: message.user.unauthorized });
   }

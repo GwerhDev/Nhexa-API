@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const o = require\\('otplib'\\); console.log\\(Object.keys\\(o\\)\\)\")",
+      "Bash(node -e \"const { TOTP, generateSecret, generateURI, verify } = require\\('otplib'\\); console.log\\(typeof TOTP, typeof generateSecret, typeof generateURI, typeof verify\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const o = require\\('otplib'\\); const { TOTP, generateSecret, generateURI, verify, NobleCryptoPlugin, ScureBase32Plugin } = o; console.log\\(typeof NobleCryptoPlugin, typeof ScureBase32Plugin\\)\")"
     ]
   }
 }

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { clearAuthCookies, ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '../integrations/cookies';
-import { consumeRefreshSession, revokeUserSessions } from '../integrations/refresh-tokens';
+import { validateRefreshSession, revokeUserSessions } from '../integrations/refresh-tokens';
 import { decodeToken } from '../integrations/jwt';
 
 const router = Router();
@@ -12,7 +12,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     if (refreshToken) {
       // Consume without rotation to revoke the refresh session
-      const session = await consumeRefreshSession(refreshToken);
+      const session = await validateRefreshSession(refreshToken);
       if (session) {
         await revokeUserSessions(session.user_id);
       }

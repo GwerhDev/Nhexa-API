@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { decodeToken } from '../../integrations/jwt';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '../../integrations/cookies';
-import { getUserSessions, revokeSession, revokeOtherSessions, revokeUserSessions } from '../../integrations/refresh-tokens';
+import { getUserSessions, revokeDeviceSession, revokeOtherSessions, revokeUserSessions } from '../../integrations/refresh-tokens';
 import { message } from '../../messages';
 
 const router = Router();
@@ -34,7 +34,7 @@ router.delete('/all', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const decoded = await decodeToken(req.cookies[ACCESS_TOKEN_COOKIE]);
-    await revokeSession(req.params.id.toString(), decoded.data.id);
+    await revokeDeviceSession(req.params.id.toString(), decoded.data.id);
     return res.status(200).json({ success: true });
   } catch {
     return res.status(500).json({ message: message.user.error });

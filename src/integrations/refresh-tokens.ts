@@ -27,7 +27,7 @@ export const createRefreshSession = async (
   if (error) throw error;
 };
 
-export const consumeRefreshSession = async (
+export const validateRefreshSession = async (
   token: string
 ): Promise<RefreshSession | null> => {
   const hash = hashToken(token);
@@ -39,28 +39,17 @@ export const consumeRefreshSession = async (
     .single<RefreshSession>();
 
   if (error || !session) return null;
-
-  // Reuse detection: token already revoked → revoke all sessions for this user
-  if (session.revoked_at) {
-    await supabase
-      .from('refresh_sessions')
-      .update({ revoked_at: new Date().toISOString() })
-      .eq('user_id', session.user_id)
-      .is('revoked_at', null);
-    return null;
-  }
-
+  if (session.revoked_at) return null;
   if (new Date(session.expires_at) < new Date()) return null;
 
-  // Consume: revoke this session (caller will issue a new one)
-  const { error: revokeError } = await supabase
+  return session;
+};
+
+export const revokeSession = async (sessionId: string): Promise<void> => {
+  await supabase
     .from('refresh_sessions')
     .update({ revoked_at: new Date().toISOString() })
-    .eq('id', session.id);
-
-  if (revokeError) throw revokeError;
-
-  return session;
+    .eq('id', sessionId);
 };
 
 export const revokeUserSessions = async (userId: string): Promise<void> => {
@@ -82,7 +71,7 @@ export const getUserSessions = async (userId: string): Promise<import('../types'
   return data ?? [];
 };
 
-export const revokeSession = async (sessionId: string, userId: string): Promise<void> => {
+export const revokeDeviceSession = async (sessionId: string, userId: string): Promise<void> => {
   await supabase
     .from('refresh_sessions')
     .update({ revoked_at: new Date().toISOString() })

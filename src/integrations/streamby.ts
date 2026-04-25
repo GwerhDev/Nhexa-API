@@ -42,8 +42,8 @@ const authProvider = async (req: express.Request): Promise<Auth> => {
     role: toStreambyRole(user.role),
     userId: user.id,
     username: user.username,
-    profilePic: user.profilePic || user.googlePic || "",
-  };
+/*     profilePic: user.profilePic || user.googlePic || "",
+ */  };
 };
 
 export default (app: Application): http.Server => {

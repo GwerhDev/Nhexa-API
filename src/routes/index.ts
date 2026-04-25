@@ -10,9 +10,14 @@ import loginInner from '../controllers/login-inner';
 import loginGoogle from '../controllers/login-google';
 import signupInner from '../controllers/signup-inner';
 import signupGoogle from '../controllers/signup-google';
+import dev from '../controllers/dev';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
+
+if (process.env.NODE_ENV !== 'production') {
+  router.use('/dev', dev);
+}
 
 router.use('/logout', logout);
 router.use('/user', authMiddleware, user);

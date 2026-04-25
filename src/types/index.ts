@@ -49,6 +49,16 @@ export interface AccountResponse {
   isVerified: boolean;
   role: UserRole;
   profilePic: string | null;
+  hasPassword: boolean;
+}
+
+export interface DeviceSession {
+  id: string;
+  user_id: string;
+  created_at: string;
+  expires_at: string;
+  user_agent: string | null;
+  ip: string | null;
 }
 
 export interface SessionStatus {

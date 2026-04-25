@@ -36,11 +36,34 @@ router.get('/', async (req: Request, res: Response) => {
       isVerified: user.isVerified,
       role: user.role,
       profilePic: user.profilePic ?? user.googlePic ?? null,
+      hasPassword: !!user.password,
     };
 
     return res.status(200).send({ logged: true, userData });
   } catch {
     return res.status(500).send({ error: message.user.error });
+  }
+});
+
+router.post('/link-email', async (req: Request, res: Response) => {
+  const token = req.cookies['accessToken'];
+  if (!token) return res.status(401).json({ message: message.user.unauthorized });
+  try {
+    const decoded = await decodeToken(token);
+    const { password } = req.body as { password?: string };
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+    const salt = await bcrypt.genSalt();
+    const hashed = await bcrypt.hash(password, salt);
+    const { error } = await supabase
+      .from('users')
+      .update({ password: hashed, isVerified: true })
+      .eq('id', decoded.data.id);
+    if (error) throw error;
+    return res.status(200).json({ success: true });
+  } catch {
+    return res.status(500).json({ message: message.user.error });
   }
 });
 

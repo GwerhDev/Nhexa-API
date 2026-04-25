@@ -15,6 +15,8 @@ import {
   encryptionKey,
 } from '../config';
 import { supabase } from './supabase';
+import { ACCESS_TOKEN_COOKIE } from './cookies';
+import { authMiddleware } from '../middleware/auth';
 import type { UserRecord, UserRole } from '../types';
 
 const toStreambyRole = (role: UserRole): Auth['role'] => {
@@ -25,7 +27,7 @@ const toStreambyRole = (role: UserRole): Auth['role'] => {
 const authProvider = async (req: express.Request): Promise<Auth> => {
   const cookies = (req as any).cookies ?? cookie.parse(req.headers.cookie ?? '');
   const userToken: string =
-    cookies['accessToken'] ?? req.headers.authorization?.split(' ')?.[1] ?? '';
+    cookies[ACCESS_TOKEN_COOKIE] ?? req.headers.authorization?.split(' ')?.[1] ?? '';
 
   const decoded = await decodeToken(userToken);
   const { data: user, error } = await supabase
@@ -40,6 +42,7 @@ const authProvider = async (req: express.Request): Promise<Auth> => {
     role: toStreambyRole(user.role),
     userId: user.id,
     username: user.username,
+    profilePic: user.profilePic || user.googlePic || "",
   };
 };
 
@@ -68,7 +71,7 @@ export default (app: Application): http.Server => {
     websocket: { server: wss },
   });
 
-  app.use('/streamby', express.json(), streambyRouter);
+  app.use('/streamby', express.json(), authMiddleware, streambyRouter);
 
   return server;
 };

@@ -70,3 +70,32 @@ export const revokeUserSessions = async (userId: string): Promise<void> => {
     .eq('user_id', userId)
     .is('revoked_at', null);
 };
+
+export const getUserSessions = async (userId: string): Promise<import('../types').DeviceSession[]> => {
+  const { data } = await supabase
+    .from('refresh_sessions')
+    .select('id, user_id, created_at, expires_at, user_agent, ip')
+    .eq('user_id', userId)
+    .is('revoked_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false });
+  return data ?? [];
+};
+
+export const revokeSession = async (sessionId: string, userId: string): Promise<void> => {
+  await supabase
+    .from('refresh_sessions')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('id', sessionId)
+    .eq('user_id', userId);
+};
+
+export const revokeOtherSessions = async (userId: string, currentRefreshToken: string): Promise<void> => {
+  const currentHash = hashToken(currentRefreshToken);
+  await supabase
+    .from('refresh_sessions')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .is('revoked_at', null)
+    .neq('token_hash', currentHash);
+};

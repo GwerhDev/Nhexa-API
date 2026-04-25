@@ -83,7 +83,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 
     const secret = decryptSecret(user.twoFactorSecret);
-    const validTotp = verifyTOTP(code, secret);
+    const validTotp = await verifyTOTP(code, secret);
 
     if (!validTotp) {
       const hashedInput = hashBackupCode(code);

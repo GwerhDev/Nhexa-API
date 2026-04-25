@@ -46,7 +46,7 @@ router.post('/enable', async (req: Request, res: Response) => {
 
     if (!secret || !code) return res.status(400).json({ message: 'Faltan parámetros.' });
 
-    if (!verifyTOTP(code, secret)) {
+    if (!(await verifyTOTP(code, secret))) {
       return res.status(400).json({ message: 'Código inválido. Intenta nuevamente.' });
     }
 
@@ -89,7 +89,7 @@ router.post('/disable', async (req: Request, res: Response) => {
     }
 
     const secret = decryptSecret(user.twoFactorSecret);
-    const validTotp = verifyTOTP(code, secret);
+    const validTotp = await verifyTOTP(code, secret);
     const hashedInput = hashBackupCode(code);
     const validBackup = user.backupCodes?.includes(hashedInput) ?? false;
 

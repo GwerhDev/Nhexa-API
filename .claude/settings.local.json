@@ -7,7 +7,13 @@
       "Bash(node -e \"const { TOTP, generateSecret, generateURI, verify } = require\\('otplib'\\); console.log\\(typeof TOTP, typeof generateSecret, typeof generateURI, typeof verify\\)\")",
       "Bash(node -e ' *)",
       "Bash(node -e \"const o = require\\('otplib'\\); const { TOTP, generateSecret, generateURI, verify, NobleCryptoPlugin, ScureBase32Plugin } = o; console.log\\(typeof NobleCryptoPlugin, typeof ScureBase32Plugin\\)\")",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "Bash(xargs grep *)",
+      "Bash(git stash *)",
+      "Bash(node -e \"const p = require\\('pdfjs-dist'\\); console.log\\(Object.keys\\(p\\).filter\\(k => k.includes\\('OP'\\) || k.includes\\('op'\\)\\)\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(npm ls *)",
+      "Bash(npx vue-tsc *)"
     ]
   }
 }

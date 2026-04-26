@@ -46,10 +46,6 @@ router.post('/', validate(LoginInnerSchema), async (req: Request, res: Response)
       return res.status(400).send({ logged: false, message: message.login.error });
     }
 
-    if (!user.isVerified) {
-      return res.status(403).send({ logged: false, verified: false, message: message.login.unverified });
-    }
-
     if (user.twoFactorEnabled) {
       const mfaToken = createMfaToken(user.id);
       return res.status(200).send({ logged: false, mfaRequired: true, mfaToken });

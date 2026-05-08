@@ -13,7 +13,32 @@
       "Bash(node -e \"const p = require\\('pdfjs-dist'\\); console.log\\(Object.keys\\(p\\).filter\\(k => k.includes\\('OP'\\) || k.includes\\('op'\\)\\)\\)\")",
       "Bash(npx tsc *)",
       "Bash(npm ls *)",
-      "Bash(npx vue-tsc *)"
+      "Bash(npx vue-tsc *)",
+      "Bash(sed -i 's|/document/${id}/edit|/editor/${id}|g' \"e:/Lalo/Desarrollo/Gwerh Dev/Spellcast-Client/src/app/components/DocumentDetail/index.tsx\")",
+      "Bash(sed -i 's|/document/${doc.id}/edit|/editor/${doc.id}|g' \"e:/Lalo/Desarrollo/Gwerh Dev/Spellcast-Client/src/app/components/DocumentList/index.tsx\")",
+      "Bash(sed -i 's|/document/${doc.id}/edit|/editor/${doc.id}|g' \"e:/Lalo/Desarrollo/Gwerh Dev/Spellcast-Client/src/app/components/LastDocuments/index.tsx\")",
+      "Bash(sed -i 's|/document/create|/editor/create|g' \"e:/Lalo/Desarrollo/Gwerh Dev/Spellcast-Client/src/app/components/Inputs/DocumentCreateInput.tsx\")",
+      "Bash(Get-ChildItem -Recurse src -Include *.ts,*.tsx)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\\\\MagicText-Lib\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(head -100)",
+      "Bash(Get-ChildItem -Path \"e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\\\\Spellcast-Client\\\\src\\\\app\\\\components\\\\Editors\" -Recurse -File)",
+      "Bash(Get-ChildItem -Recurse \"e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\\\\MagicText-Lib\\\\src\\\\\" | Sort-Object FullName | Format-Table FullName)",
+      "Bash(awk '{print \"src/\" $0}')",
+      "Bash(git -C \"e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\\\\MagicText-Lib\" status)",
+      "Bash(git -C \"e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\\\\MagicText-Lib\" diff --stat)",
+      "Bash(git -C 'e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\\\\MagicText-Lib' commit -am ' *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(node -e \"const fs = require\\('fs'\\); const src = fs.readFileSync\\('e:/Lalo/Desarrollo/Gwerh Dev/Spellcast-Client/node_modules/@tiptap/extension-image/dist/index.js', 'utf8'\\); const match = src.match\\(/group['\\\\\"]?\\\\s*[:\\\\=]\\\\s*['\\\\\"]\\([^'\\\\\"]+\\)['\\\\\"]/\\) || src.match\\(/inline['\\\\\"]?\\\\s*[:\\\\=]\\\\s*\\(true|false\\)/\\); console.log\\(match?.[0]\\); console.log\\(src.substring\\(0,2000\\)\\)\")",
+      "Bash(ls -la \"e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\\\\\" | head -30)",
+      "Read(//e/Lalo/Desarrollo/**)",
+      "Bash(dir \"e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\" -Name)",
+      "Bash(lsof -ti:8080)",
+      "Bash(xargs kill -9)",
+      "PowerShell($pid = \\(Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue\\).OwningProcess | Select-Object -First 1; if \\($pid\\) { Stop-Process -Id $pid -Force; \"Killed PID $pid\" } else { \"No process found on port 8080\" })",
+      "PowerShell($proc = \\(Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue\\).OwningProcess | Select-Object -First 1; if \\($proc\\) { Stop-Process -Id $proc -Force; \"Killed PID $proc\" } else { \"No process found on port 8080\" })",
+      "Bash(Get-ChildItem -Path \"e:\\\\Lalo\\\\Desarrollo\\\\Gwerh Dev\\\\Spectra-Client\" -Recurse -File)"
     ]
   }
 }

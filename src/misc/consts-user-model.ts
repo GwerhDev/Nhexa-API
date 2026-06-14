@@ -8,7 +8,6 @@ export const status: Record<string, UserStatus> = {
 export const roles: Record<string, UserRole> = {
   user: 'user',
   admin: 'admin',
-  subscriptor: 'subscriptor',
 };
 
 export const methods: Record<string, AuthMethod> = {

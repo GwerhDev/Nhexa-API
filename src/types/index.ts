@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin' | 'subscriptor';
+export type UserRole = 'user' | 'admin';
 export type AuthMethod = 'inner' | 'google' | 'admin-management';
 export type UserStatus = 'active' | 'inactive';
 

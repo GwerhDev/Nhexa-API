@@ -30,7 +30,7 @@
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.16.3",
     "qrcode": "^1.5.4",
-    "streamby-core": "^0.28.3",
+    "streamby-core": "^0.28.4",
     "ws": "^8.20.0",
     "zod": "^4.3.6"
   },

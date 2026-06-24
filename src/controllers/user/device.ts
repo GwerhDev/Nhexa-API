@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { UAParser } from 'ua-parser-js';
 import { decodeToken } from '../../integrations/jwt';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '../../integrations/cookies';
-import { getUserSessions, revokeDeviceSession, revokeOtherSessions, revokeUserSessions } from '../../integrations/refresh-tokens';
+import { getUserSessions, revokeDeviceSession, revokeOtherSessions, revokeUserSessions, validateRefreshSession } from '../../integrations/refresh-tokens';
 import { message } from '../../messages';
 
 const router = Router();
@@ -11,6 +11,14 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const decoded = await decodeToken(req.cookies[ACCESS_TOKEN_COOKIE]);
     const sessions = await getUserSessions(decoded.data.id);
+
+    // Identify the current session by matching the refresh token
+    const currentRefreshToken: string | undefined = req.cookies[REFRESH_TOKEN_COOKIE];
+    const currentSession = currentRefreshToken
+      ? await validateRefreshSession(currentRefreshToken)
+      : null;
+    const currentSessionId = currentSession?.id ?? null;
+
     const enriched = sessions.map(s => {
       const parser = new UAParser(s.user_agent ?? '');
       const browser = parser.getBrowser();
@@ -18,6 +26,7 @@ router.get('/', async (req: Request, res: Response) => {
       const device = parser.getDevice();
       return {
         ...s,
+        isCurrent: s.id === currentSessionId,
         device: {
           browser: browser.name ?? 'Navegador desconocido',
           os: os.name ?? null,

@@ -9,6 +9,11 @@ export const generateRefreshToken = (): string =>
 const hashToken = (token: string): string =>
   crypto.createHash('sha256').update(token).digest('hex');
 
+const normalizeIp = (ip?: string): string | null => {
+  if (!ip) return null;
+  return ip.replace(/^::ffff:/, '');
+};
+
 export const createRefreshSession = async (
   userId: string,
   userRole: UserRole,
@@ -22,7 +27,7 @@ export const createRefreshSession = async (
     token_hash: hashToken(token),
     expires_at: expiresAt,
     user_agent: meta?.userAgent ?? null,
-    ip: meta?.ip ?? null,
+    ip: normalizeIp(meta?.ip),
   }]);
   if (error) throw error;
   cleanupSessions().catch(() => {});

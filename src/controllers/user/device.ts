@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { UAParser } from 'ua-parser-js';
 import { decodeToken } from '../../integrations/jwt';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '../../integrations/cookies';
 import { getUserSessions, revokeDeviceSession, revokeOtherSessions, revokeUserSessions } from '../../integrations/refresh-tokens';
@@ -10,7 +11,21 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const decoded = await decodeToken(req.cookies[ACCESS_TOKEN_COOKIE]);
     const sessions = await getUserSessions(decoded.data.id);
-    return res.status(200).json({ sessions });
+    const enriched = sessions.map(s => {
+      const parser = new UAParser(s.user_agent ?? '');
+      const browser = parser.getBrowser();
+      const os = parser.getOS();
+      const device = parser.getDevice();
+      return {
+        ...s,
+        device: {
+          browser: browser.name ?? 'Navegador desconocido',
+          os: os.name ?? null,
+          type: device.type ?? 'desktop',
+        },
+      };
+    });
+    return res.status(200).json({ sessions: enriched });
   } catch {
     return res.status(401).json({ message: message.user.unauthorized });
   }

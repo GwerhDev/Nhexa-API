@@ -25,6 +25,16 @@ export const createRefreshSession = async (
     ip: meta?.ip ?? null,
   }]);
   if (error) throw error;
+  cleanupSessions().catch(() => {});
+};
+
+export const cleanupSessions = async (): Promise<void> => {
+  const now = new Date().toISOString();
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  await supabase
+    .from('refresh_sessions')
+    .delete()
+    .or(`expires_at.lt.${now},revoked_at.lt.${cutoff}`);
 };
 
 export const validateRefreshSession = async (

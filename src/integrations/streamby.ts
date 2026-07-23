@@ -58,6 +58,7 @@ export default (app: Application): http.Server => {
     ],
     storageProviders: [
       {
+        id: 'builtin',
         type: 's3',
         config: {
           bucket: awsBucket,

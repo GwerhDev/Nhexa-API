@@ -6,12 +6,14 @@ import { clientAccountsUrl, privateSecret } from '../config';
 import { createToken } from '../integrations/jwt';
 import { setAccessTokenCookie, setRefreshTokenCookie } from '../integrations/cookies';
 import { createRefreshSession, generateRefreshToken } from '../integrations/refresh-tokens';
+import { allowedRedirect, safeRedirect } from '../integrations/redirects';
 import type { GoogleAuthResult, GoogleUserData, UserRecord } from '../types';
 
 const router = Router();
 
 router.get('/', (req: Request, res: Response, next: NextFunction) => {
-  const state = (req.query.callback as string) || undefined;
+  // Where to go back to once signed in: only an allowed destination is carried through Google.
+  const state = allowedRedirect(req.query.callback);
   passport.authenticate('login-google', { state })(req, res, next);
 });
 
@@ -23,7 +25,7 @@ router.get('/callback', (req: Request, res: Response, next: NextFunction) => {
 
     const { userData, callback } = user;
     const token = jwt.sign(userData as object, privateSecret, { expiresIn: '5m' });
-    const nextUrl = callback ?? clientAccountsUrl;
+    const nextUrl = safeRedirect(callback, clientAccountsUrl);
 
     return res.redirect(`/login-google/success?token=${token}&next=${encodeURIComponent(nextUrl)}`);
   })(req, res, next);
@@ -32,7 +34,8 @@ router.get('/callback', (req: Request, res: Response, next: NextFunction) => {
 router.get('/success', async (req: Request, res: Response) => {
   try {
     const token = req.query.token as string | undefined;
-    const next = (req.query.next as string) || clientAccountsUrl;
+    // Anyone can link here with a `next` of their own: it's checked again.
+    const next = safeRedirect(req.query.next, clientAccountsUrl);
 
     if (!token) {
       return res.redirect(`${clientAccountsUrl}/login/failed?status=403`);

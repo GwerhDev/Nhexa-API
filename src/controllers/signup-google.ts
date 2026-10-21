@@ -4,12 +4,13 @@ import jwt from 'jsonwebtoken';
 import { supabase } from '../integrations/supabase';
 import { clientAccountsUrl, defaultUsername, adminEmailList, privateSecret } from '../config';
 import { methods, roles } from '../misc/consts-user-model';
+import { allowedRedirect } from '../integrations/redirects';
 import type { GoogleAuthResult, GoogleUserData, UserRecord } from '../types';
 
 const router = Router();
 
 router.get('/', (req: Request, res: Response, next: NextFunction) => {
-  const state = (req.query.callback as string) || undefined;
+  const state = allowedRedirect(req.query.callback);
   passport.authenticate('signup-google', { state })(req, res, next);
 });
 

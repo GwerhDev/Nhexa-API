@@ -6,7 +6,8 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import './integrations/passport';
 import routes from './routes';
-import { privateSecret, allowedOrigins } from './config';
+import { privateSecret } from './config';
+import { isRegisteredOrigin, registeredOrigins } from './integrations/redirects';
 import { production } from './misc/consts';
 
 const server: Application = express();
@@ -14,7 +15,9 @@ const server: Application = express();
 server.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
 
-  if (origin && allowedOrigins.includes(origin)) {
+  // Exactly a registered origin: one that's only part of another (a prefix, a parent domain)
+  // is not, or any site naming itself so would get the user's session.
+  if (isRegisteredOrigin(origin, registeredOrigins)) {
     res.header('Access-Control-Allow-Origin', origin);
   }
 

@@ -18,6 +18,7 @@ import { supabase } from './supabase';
 import { ACCESS_TOKEN_COOKIE } from './cookies';
 import { authMiddleware } from '../middleware/auth';
 import type { UserRecord, UserRole } from '../types';
+import { STREAMBY_PATH, streambyBodyParser } from '../middleware/body';
 
 const toStreambyRole = (role: UserRole): Auth['role'] => {
   if (role === 'admin') return 'admin';
@@ -72,7 +73,7 @@ export default (app: Application): http.Server => {
     websocket: { server: wss },
   });
 
-  app.use('/streamby', express.json(), authMiddleware, streambyRouter);
+  app.use(STREAMBY_PATH, streambyBodyParser(), authMiddleware, streambyRouter);
 
   return server;
 };

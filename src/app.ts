@@ -2,13 +2,13 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 import session from 'express-session';
 import passport from 'passport';
 import morgan from 'morgan';
-import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import './integrations/passport';
 import routes from './routes';
 import { privateSecret } from './config';
 import { isRegisteredOrigin, registeredOrigins } from './integrations/redirects';
 import { production } from './misc/consts';
+import { apiBodyParsers } from './middleware/body';
 
 const server: Application = express();
 
@@ -35,8 +35,7 @@ server.use((req: Request, res: Response, next: NextFunction) => {
   return next();
 });
 
-server.use(bodyParser.json({ limit: '100mb' }));
-server.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
+server.use(apiBodyParsers());
 server.use(cookieParser());
 server.use(morgan('dev'));
 

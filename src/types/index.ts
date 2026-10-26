@@ -126,6 +126,78 @@ export interface SubMenuItem {
   route?: string | null;
 }
 
+// ── OAuth 2 (Nhexa as the authorization server; see integrations/oauthServer) ──
+
+export type OAuthScope = 'profile' | 'email' | 'streamby:read' | 'streamby:write';
+export type OAuthClientType = 'public' | 'confidential';
+
+export interface OAuthClient {
+  client_id: string;
+  client_secret_hash: string | null;
+  type: OAuthClientType;
+  name: string;
+  logo_uri: string | null;
+  client_uri: string | null;
+  redirect_uris: string[];
+  scopes: OAuthScope[];
+  // 'manual': registered by Nhexa; 'dynamic': by itself (RFC 7591); 'metadata': its client_id
+  // is the URL of its metadata document (Client ID Metadata Documents), never stored.
+  registration: 'manual' | 'dynamic' | 'metadata';
+}
+
+export interface OAuthCode {
+  code_hash: string;
+  client_id: string;
+  user_id: string;
+  redirect_uri: string;
+  scopes: OAuthScope[];
+  resource: string;
+  code_challenge: string;
+  code_challenge_method: 'S256';
+  expires_at: string;
+  used_at: string | null;
+}
+
+export interface OAuthRefreshToken {
+  token_hash: string;
+  family_id: string;
+  client_id: string;
+  user_id: string;
+  scopes: OAuthScope[];
+  resource: string;
+  expires_at: string;
+  rotated_at: string | null;
+  revoked_at: string | null;
+}
+
+export interface OAuthConsent {
+  user_id: string;
+  client_id: string;
+  scopes: OAuthScope[];
+}
+
+/** What an authorization request asks for, once checked. */
+export interface OAuthAuthorizeRequest {
+  client: OAuthClient;
+  redirectUri: string;
+  scopes: OAuthScope[];
+  state: string | null;
+  resource: string;
+  codeChallenge: string;
+}
+
+/** An access token's claims (RS256, see integrations/oauthKeys). */
+export interface OAuthAccessClaims {
+  iss: string;
+  sub: string;
+  aud: string;
+  client_id: string;
+  scope: string;
+  jti: string;
+  iat: number;
+  exp: number;
+}
+
 declare global {
   namespace Express {
     interface User extends GoogleAuthResult {}

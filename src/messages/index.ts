@@ -37,6 +37,12 @@ interface Messages {
     existing: string;
     notfound: string;
   };
+  oauth: {
+    notConfigured: string;
+    loginRequired: string;
+    forbiddenOrigin: string;
+    error: string;
+  };
 }
 
 export const message: Messages = {
@@ -102,5 +108,11 @@ export const message: Messages = {
     error: 'Error',
     existing: 'Media already exists',
     notfound: 'Media not found',
+  },
+  oauth: {
+    notConfigured: 'The OAuth server is not configured',
+    loginRequired: 'Log in first',
+    forbiddenOrigin: 'This request must come from Nhexa Accounts',
+    error: 'The OAuth server failed',
   },
 };

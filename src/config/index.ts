@@ -37,3 +37,11 @@ export const allowedOrigins = (
     ? process.env.ALLOWED_ORIGINS_PROD
     : process.env.ALLOWED_ORIGINS
 ) as string;
+
+// OAuth 2: the private key (PEM) access tokens are signed with, and earlier ones (their public
+// keys stay in the JWKS while tokens they signed may still be valid), separated by blank lines.
+export const oauthSigningKey = process.env.OAUTH_SIGNING_KEY;
+export const oauthPreviousKeys = process.env.OAUTH_PREVIOUS_KEYS;
+// The resources (resource indicators, RFC 8707) access tokens can be for, comma separated.
+// Default: StreamBy on this API, and its MCP server.
+export const oauthResources = process.env.OAUTH_RESOURCES;

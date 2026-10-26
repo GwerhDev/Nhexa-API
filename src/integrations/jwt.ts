@@ -12,7 +12,8 @@ export const createToken = async (data: TokenPayload, timeInHours: number): Prom
 };
 
 export const decodeToken = async (token: string): Promise<JWTClaims> => {
-  const decoded = jwt.verify(token, privateSecret) as JWTClaims;
+  // Only Nhexa's own session tokens (HS256): an OAuth access token (RS256) is never one.
+  const decoded = jwt.verify(token, privateSecret, { algorithms: ['HS256'] }) as JWTClaims;
   return decoded;
 };
 
@@ -26,7 +27,7 @@ export const createMfaToken = (userId: string): string => {
 };
 
 export const decodeMfaToken = (token: string): MfaClaims => {
-  const decoded = jwt.verify(token, privateSecret) as MfaClaims;
+  const decoded = jwt.verify(token, privateSecret, { algorithms: ['HS256'] }) as MfaClaims;
   if (!decoded.mfa) throw new Error('Not an MFA token');
   return decoded;
 };

@@ -11,6 +11,8 @@ import loginGoogle from '../controllers/login-google';
 import signupInner from '../controllers/signup-inner';
 import signupGoogle from '../controllers/signup-google';
 import dev from '../controllers/dev';
+import oauth from '../controllers/oauth';
+import wellKnown from '../controllers/well-known';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -29,5 +31,8 @@ router.use('/login-inner', loginInner);
 router.use('/login-google', loginGoogle);
 router.use('/signup-inner', signupInner);
 router.use('/signup-google', signupGoogle);
+// Nhexa as an OAuth 2 authorization server (its session refreshed first, for the consent).
+router.use('/oauth', authMiddleware, oauth);
+router.use('/.well-known', wellKnown);
 
 export default router;

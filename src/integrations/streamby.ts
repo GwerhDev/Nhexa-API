@@ -11,6 +11,7 @@ import {
   mongodbString,
   supabaseString,
   encryptionKey,
+  apiUrl,
 } from '../config';
 import { supabase } from './supabase';
 import { authMiddleware } from '../middleware/auth';
@@ -52,6 +53,9 @@ export default (app: Application): http.Server => {
     ],
     encrypt: encryptionKey,
     websocket: { server: wss },
+    // Where workers call back: the public https URL. Behind Fly's proxy (TLS ends there, and
+    // there's no trust proxy) the request's own URL would come out as http://.
+    workerOptions: { callbackBaseUrl: `${apiUrl}${STREAMBY_PATH}` },
   });
 
   app.use(STREAMBY_PATH, streambyBodyParser(), authMiddleware, streambyRouter);

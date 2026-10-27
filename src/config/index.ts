@@ -45,7 +45,3 @@ export const oauthPreviousKeys = process.env.OAUTH_PREVIOUS_KEYS;
 // The resources (resource indicators, RFC 8707) access tokens can be for, comma separated.
 // Default: StreamBy on this API, and its MCP server.
 export const oauthResources = process.env.OAUTH_RESOURCES;
-
-// The Nhexa environment's app catalog: the public StreamBy export it's published as (the URL
-// accounts.nhexa.cl and nhexa.cl read it from, ending in /nhexa-environment).
-export const nhexaEnvironmentUrl = process.env.NHEXA_ENVIRONMENT_URL;

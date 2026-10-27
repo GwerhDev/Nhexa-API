@@ -1,19 +1,17 @@
 import { Request, Response, Router } from 'express';
 import { message } from '../messages';
 import { getOAuthServer } from '../integrations/oauth';
-import { nhexaApps } from '../integrations/nhexaEnvironment';
 import { sessionUserId } from '../integrations/session';
 import type { OAuthServer } from '../integrations/oauthServer';
-import type { NhexaAppCategory } from '../types';
 
 export interface AccountAppsRouterOptions {
   sessionUserId: (req: Request) => Promise<string | null>;
-  nhexaApps: () => Promise<NhexaAppCategory[]>;
 }
 
 /**
- * The user's apps, for accounts.nhexa.cl: the Nhexa environment's, and the ones they connected
- * with OAuth (each one's access can be taken away).
+ * The apps the user connected with their account (OAuth), for accounts.nhexa.cl: each one's
+ * access can be taken away. (The Nhexa environment's apps are a StreamBy export the browser
+ * reads itself: it answers only allowed origins.)
  */
 export function createAccountAppsRouter(getServer: () => OAuthServer | null, options: AccountAppsRouterOptions): Router {
   const router = Router();
@@ -28,11 +26,8 @@ export function createAccountAppsRouter(getServer: () => OAuthServer | null, opt
   router.get('/', async (_req: Request, res: Response) => {
     try {
       const server = getServer();
-      const [nhexa, connected] = await Promise.all([
-        options.nhexaApps(),
-        server ? server.connectedApps(res.locals.userId) : Promise.resolve([]),
-      ]);
-      res.set('Cache-Control', 'no-store').json({ nhexa, connected });
+      const connected = server ? await server.connectedApps(res.locals.userId) : [];
+      res.set('Cache-Control', 'no-store').json({ connected });
     } catch (err) {
       console.error('[account-apps]', err);
       res.status(500).json({ message: message.oauth.error });
@@ -55,4 +50,4 @@ export function createAccountAppsRouter(getServer: () => OAuthServer | null, opt
   return router;
 }
 
-export default createAccountAppsRouter(getOAuthServer, { sessionUserId, nhexaApps });
+export default createAccountAppsRouter(getOAuthServer, { sessionUserId });

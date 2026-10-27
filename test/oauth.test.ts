@@ -87,7 +87,6 @@ app.use('/oauth', createOAuthRouter(() => current, {
 app.use('/.well-known', createWellKnownRouter(() => current, ISSUER, [STREAMBY, `${STREAMBY}/mcp`]));
 app.use('/account/apps', createAccountAppsRouter(() => current, {
   sessionUserId: async req => (req.headers['x-test-user'] as string) ?? null,
-  nhexaApps: async () => [{ id: 'c1', name: 'Apps', apps: [{ label: 'Spellcast', url: 'https://spellcast.nhexa.cl' }] }],
 }));
 
 let http: Server;
@@ -442,11 +441,11 @@ describe("the user's connected apps", () => {
   const remove = async (clientId: string, user = 'ada') =>
     fetch(`${base}/account/apps/${encodeURIComponent(clientId)}`, { method: 'DELETE', headers: { 'x-test-user': user } });
 
-  it("lists Nhexa's apps and the ones the user approved, as they saw them, with when they last used it", async () => {
+  it('lists the apps the user approved, as they saw them, with when they last used it', async () => {
     await flow();
     const res = await apps();
     assert.equal(res.status, 200);
-    assert.equal(res.body.nhexa[0].apps[0].label, 'Spellcast');
+    assert.deepEqual(Object.keys(res.body), ['connected']);
     assert.equal(res.body.connected.length, 1);
     const [app] = res.body.connected;
     assert.equal(app.clientId, 'streamby');

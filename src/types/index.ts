@@ -174,6 +174,28 @@ export interface OAuthConsent {
   user_id: string;
   client_id: string;
   scopes: OAuthScope[];
+  // The app as the user saw it when they approved it.
+  client_name?: string | null;
+  client_logo_uri?: string | null;
+  // Set by the store: when the user last approved it, and when the app last used it.
+  updated_at?: string;
+  last_used_at?: string | null;
+}
+
+/** An app of the Nhexa environment, as its catalog lists it. */
+export interface NhexaApp { label: string; url: string; icon?: string; color?: string; description?: string; route?: string }
+export interface NhexaAppCategory { id: string; name: string; apps: NhexaApp[] }
+
+/** An app the user connected, as accounts lists it. */
+export interface ConnectedApp {
+  clientId: string;
+  name: string;
+  logoUri: string | null;
+  // Registered by Nhexa (not by itself, nor known only by its metadata URL).
+  verified: boolean;
+  scopes: OAuthScope[];
+  authorizedAt: string | null;
+  lastUsedAt: string | null;
 }
 
 /** What an authorization request asks for, once checked. */

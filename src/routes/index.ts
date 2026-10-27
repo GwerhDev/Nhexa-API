@@ -4,6 +4,7 @@ import user from '../controllers/user';
 import logout from '../controllers/logout';
 import session from '../controllers/session';
 import account from '../controllers/account';
+import accountApps from '../controllers/account-apps';
 import appList from '../controllers/app-list';
 import menuList from '../controllers/menu-list';
 import loginInner from '../controllers/login-inner';
@@ -24,6 +25,7 @@ if (process.env.NODE_ENV !== 'production') {
 router.use('/logout', logout);
 router.use('/user', authMiddleware, user);
 router.use('/session', authMiddleware, session);
+router.use('/account/apps', authMiddleware, accountApps);
 router.use('/account', authMiddleware, account);
 router.use('/app-list', appList);
 router.use('/menu-list', menuList);

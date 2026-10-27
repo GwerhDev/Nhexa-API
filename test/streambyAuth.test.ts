@@ -12,6 +12,12 @@ const PROJECT_SCOPE = { tokenId: 'tok-2', kind: 'project' as const, permissions:
 const PROJECT_PRINCIPAL = 'project-token:tok-2:p1';
 const TOKEN = 'sbt_a-token';
 const SESSION_JWT = 'eyJ.session.jwt';
+// Shaped as an OAuth access token (a JWT signed with RS256): what verifyOAuthToken checks.
+const jwtWith = (sig: string) => `${Buffer.from(JSON.stringify({ alg: 'RS256', kid: 'k' })).toString('base64url')}.${Buffer.from('{}').toString('base64url')}.${sig}`;
+const APP_TOKEN = jwtWith('good');
+const APP_SCOPE = { tokenId: 'oauth:dyn_claude:user-1', kind: 'user' as const, permissions: ['project:read' as const], projectIds: '*' as const };
+const VERIFIED = { userId: OWNER.id, clientId: 'dyn_claude', scopes: ['streamby:read'], expiresAt: new Date(Date.now() + 3600_000), scope: APP_SCOPE };
+const CONSENT = { user_id: OWNER.id, client_id: 'dyn_claude', scopes: ['streamby:read' as const], client_name: 'Claude' };
 
 const requestWith = ({ bearer, cookie }: { bearer?: string; cookie?: string }): Request =>
   ({
@@ -30,6 +36,9 @@ const deps = (over: Partial<StreamByAuthDeps> = {}): StreamByAuthDeps => ({
     if (token === PROJECT_TOKEN) return { userId: PROJECT_PRINCIPAL, name: 'CI', scope: PROJECT_SCOPE };
     return null;
   },
+  verifyOAuthToken: async (token) => (token === APP_TOKEN ? VERIFIED : null),
+  appAccess: async (userId, clientId) => (userId === OWNER.id && clientId === 'dyn_claude' ? CONSENT : null),
+  touchAppAccess: async () => {},
   ...over,
 });
 
@@ -76,5 +85,32 @@ describe('StreamBy authProvider', () => {
     await provider(requestWith({ cookie: SESSION_JWT }));
     assert.equal(resolved, 0);
     await assert.rejects(createStreamByAuthProvider(deps())(requestWith({ cookie: TOKEN })), /invalid token/);
+  });
+
+  it("an app's OAuth access token is its user, with what its scopes grant, and the app", async () => {
+    const auth = await createStreamByAuthProvider(deps())(requestWith({ bearer: APP_TOKEN, cookie: SESSION_JWT }));
+    assert.deepEqual(auth, {
+      role: 'viewer', userId: OWNER.id, username: OWNER.username, apiToken: APP_SCOPE,
+      oauth: { clientId: 'dyn_claude', clientName: 'Claude' },
+    });
+  });
+
+  it("an app's token opens nothing once it's invalid, its access was taken away, or its user is gone", async () => {
+    await assert.rejects(createStreamByAuthProvider(deps())(requestWith({ bearer: jwtWith('forged'), cookie: SESSION_JWT })), /Invalid OAuth access token/);
+    await assert.rejects(createStreamByAuthProvider(deps({ appAccess: async () => null }))(requestWith({ bearer: APP_TOKEN })), /no longer has access/);
+    await assert.rejects(createStreamByAuthProvider(deps({ findUser: async () => null }))(requestWith({ bearer: APP_TOKEN })), /User not found/);
+  });
+
+  it("marks an app's use now and then, not on every request", async () => {
+    let touched = 0;
+    let clock = 0;
+    const provider = createStreamByAuthProvider(deps({ touchAppAccess: async () => { touched++; }, now: () => clock }));
+    clock = 120_000;
+    await provider(requestWith({ bearer: APP_TOKEN }));
+    await provider(requestWith({ bearer: APP_TOKEN }));
+    assert.equal(touched, 1);
+    clock += 61_000;
+    await provider(requestWith({ bearer: APP_TOKEN }));
+    assert.equal(touched, 2);
   });
 });

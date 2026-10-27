@@ -13,6 +13,10 @@ import { createOAuthServer, OAUTH_SCOPES, OAuthServer } from './oauthServer';
 
 const defaultResources = () => [`${apiUrl}/streamby`, `${apiUrl}/streamby/mcp`];
 
+/** What access tokens can be for (their audience): OAUTH_RESOURCES, or StreamBy and its MCP server. */
+export const oauthResourceList = (): string[] =>
+  oauthResources ? oauthResources.split(',').map(r => r.trim()).filter(Boolean) : defaultResources();
+
 let server: OAuthServer | null | undefined;
 
 export function getOAuthServer(): OAuthServer | null {
@@ -39,7 +43,7 @@ export function getOAuthServer(): OAuthServer | null {
     },
     issuer: apiUrl,
     authorizationEndpoint: `${clientAccountsUrl}/oauth/authorize`,
-    resources: oauthResources ? oauthResources.split(',').map(r => r.trim()).filter(Boolean) : defaultResources(),
+    resources: oauthResourceList(),
   });
   return server;
 }

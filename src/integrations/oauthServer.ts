@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import type { OAuthAuthorizeRequest, OAuthClient, OAuthScope, UserRecord } from '../types';
+import type { ConnectedApp, OAuthAuthorizeRequest, OAuthClient, OAuthConsent, OAuthScope, UserRecord } from '../types';
 import type { OAuthStore } from './oauthStore';
 import type { OAuthSigner } from './oauthKeys';
 import { isMetadataClientId } from './oauthClientMetadata';
@@ -157,6 +157,8 @@ export function createOAuthServer(deps: OAuthServerDeps) {
     await deps.store.saveConsent({
       user_id: userId, client_id: request.client.client_id,
       scopes: [...new Set([...(previous?.scopes ?? []), ...request.scopes])],
+      // As the user saw it: kept for their list of connected apps.
+      client_name: request.client.name, client_logo_uri: request.client.logo_uri,
     });
     const code = randomToken();
     await deps.store.createCode({
@@ -178,6 +180,8 @@ export function createOAuthServer(deps: OAuthServerDeps) {
       token_hash: sha256(refreshToken), family_id: familyId, client_id: clientId, user_id: userId,
       scopes, resource, expires_at: inSeconds(REFRESH_TOKEN_SECONDS),
     });
+    // Its last use, for the user's list of connected apps: never in the way of the token.
+    await deps.store.touchConsent(userId, clientId).catch(err => console.error('[oauth] touchConsent:', err instanceof Error ? err.message : err));
     return {
       access_token: accessToken, token_type: 'Bearer', expires_in: ACCESS_TOKEN_SECONDS,
       refresh_token: refreshToken, scope: scopes.join(' '),
@@ -245,6 +249,8 @@ export function createOAuthServer(deps: OAuthServerDeps) {
     let claims;
     try { claims = deps.signer.verify(accessToken); } catch { throw new OAuthError('invalid_token', 'The access token is invalid', 401); }
     const scopes = claims.scope.split(' ');
+    // Its access taken away, the app's access tokens end too, not only when they expire.
+    if (!(await deps.store.findConsent(claims.sub, claims.client_id))) throw new OAuthError('invalid_token', 'The app no longer has access', 401);
     const user = await deps.findUser(claims.sub);
     if (!user) throw new OAuthError('invalid_token', 'The user no longer exists', 401);
     return {
@@ -322,7 +328,48 @@ export function createOAuthServer(deps: OAuthServerDeps) {
     authorization_response_iss_parameter_supported: true,
   });
 
-  return { checkAuthorize, errorRedirect, hasConsent, decide, token, userinfo, revoke, register, metadata, jwks: () => deps.signer.jwks() };
+  // ── The user's connected apps ──
+
+  /** The apps the user approved, as accounts lists them (without fetching any). */
+  async function connectedApps(userId: string): Promise<ConnectedApp[]> {
+    const consents = await deps.store.listConsents(userId);
+    return Promise.all(consents.map(async consent => {
+      const client = isMetadataClientId(consent.client_id) ? null : await deps.store.findClient(consent.client_id);
+      return {
+        clientId: consent.client_id,
+        name: consent.client_name ?? client?.name ?? consent.client_id,
+        logoUri: consent.client_logo_uri ?? client?.logo_uri ?? null,
+        verified: client?.registration === 'manual',
+        scopes: consent.scopes,
+        authorizedAt: consent.updated_at ?? null,
+        lastUsedAt: consent.last_used_at ?? null,
+      };
+    }));
+  }
+
+  /**
+   * Takes the app's access away: its refresh tokens end, and its consent with them (asking
+   * again shows the consent screen). Its access tokens are refused by a resource server that
+   * checks `appAccess`.
+   */
+  async function disconnectApp(userId: string, clientId: string): Promise<boolean> {
+    const consent = await deps.store.findConsent(userId, clientId);
+    await deps.store.revokeClientTokens(userId, clientId);
+    if (!consent) return false;
+    await deps.store.deleteConsent(userId, clientId);
+    return true;
+  }
+
+  /** For a resource server: the user's consent to the app, or null once they took it away. */
+  const appAccess = (userId: string, clientId: string): Promise<OAuthConsent | null> => deps.store.findConsent(userId, clientId);
+
+  /** Marks that the app used the user's access now. */
+  const touchAppAccess = (userId: string, clientId: string): Promise<void> => deps.store.touchConsent(userId, clientId);
+
+  return {
+    checkAuthorize, errorRedirect, hasConsent, decide, token, userinfo, revoke, register, metadata, jwks: () => deps.signer.jwks(),
+    connectedApps, disconnectApp, appAccess, touchAppAccess,
+  };
 }
 
 export type OAuthServer = ReturnType<typeof createOAuthServer>;

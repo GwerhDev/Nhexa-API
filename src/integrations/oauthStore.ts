@@ -21,8 +21,16 @@ export interface OAuthStore {
   revokeRefreshToken(tokenHash: string): Promise<void>;
   revokeFamily(familyId: string): Promise<void>;
 
+  /** Revokes every refresh token the user's app holds (all its grants). */
+  revokeClientTokens(userId: string, clientId: string): Promise<void>;
+
   findConsent(userId: string, clientId: string): Promise<OAuthConsent | null>;
+  /** The user's consents, the latest approved first. */
+  listConsents(userId: string): Promise<OAuthConsent[]>;
   saveConsent(consent: OAuthConsent): Promise<void>;
+  deleteConsent(userId: string, clientId: string): Promise<void>;
+  /** Marks when the app last used the user's consent. */
+  touchConsent(userId: string, clientId: string): Promise<void>;
 }
 
 const fail = (what: string, error: { message: string } | null) => {
@@ -83,13 +91,33 @@ export const createSupabaseOAuthStore = (db: SupabaseClient<any, any, any>): OAu
     fail('revokeFamily', error);
   },
 
+  async revokeClientTokens(userId, clientId) {
+    const { error } = await db.from('oauth_tokens').update({ revoked_at: new Date().toISOString() })
+      .eq('user_id', userId).eq('client_id', clientId).is('revoked_at', null);
+    fail('revokeClientTokens', error);
+  },
+
   async findConsent(userId, clientId) {
     const { data, error } = await db.from('oauth_consents').select('*').eq('user_id', userId).eq('client_id', clientId).maybeSingle();
     fail('findConsent', error);
     return (data as OAuthConsent | null) ?? null;
   },
+  async listConsents(userId) {
+    const { data, error } = await db.from('oauth_consents').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
+    fail('listConsents', error);
+    return (data as OAuthConsent[] | null) ?? [];
+  },
   async saveConsent(consent) {
     const { error } = await db.from('oauth_consents').upsert({ ...consent, updated_at: new Date().toISOString() });
     fail('saveConsent', error);
+  },
+  async deleteConsent(userId, clientId) {
+    const { error } = await db.from('oauth_consents').delete().eq('user_id', userId).eq('client_id', clientId);
+    fail('deleteConsent', error);
+  },
+  async touchConsent(userId, clientId) {
+    const { error } = await db.from('oauth_consents').update({ last_used_at: new Date().toISOString() })
+      .eq('user_id', userId).eq('client_id', clientId);
+    fail('touchConsent', error);
   },
 });

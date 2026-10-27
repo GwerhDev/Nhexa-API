@@ -43,6 +43,7 @@ interface Messages {
     forbiddenOrigin: string;
     error: string;
     tooManyRequests: string;
+    appNotFound: string;
   };
 }
 
@@ -116,5 +117,6 @@ export const message: Messages = {
     forbiddenOrigin: 'This request must come from Nhexa Accounts',
     error: 'The OAuth server failed',
     tooManyRequests: 'Too many requests: try again later',
+    appNotFound: 'This app is not connected to your account',
   },
 };

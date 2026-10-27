@@ -1,11 +1,9 @@
-import cookie from 'cookie';
 import { Request, Response, Router } from 'express';
 import { clientAccountsUrl } from '../config';
 import { message } from '../messages';
 import { validate } from '../middleware/validate';
 import { OAuthDecisionSchema, OAuthRegisterSchema, OAuthRevokeSchema, OAuthTokenSchema } from '../schemas/auth';
-import { ACCESS_TOKEN_COOKIE } from '../integrations/cookies';
-import { decodeToken } from '../integrations/jwt';
+import { sessionUserId } from '../integrations/session';
 import { getOAuthServer } from '../integrations/oauth';
 import { ClientCredentials, OAuthError, OAuthServer } from '../integrations/oauthServer';
 import { oauthRateLimit, RateLimitOptions } from '../middleware/rateLimit';
@@ -149,17 +147,5 @@ export function createOAuthRouter(getServer: () => OAuthServer | null, options: 
 
   return router;
 }
-
-// The signed-in user, from their session cookie (refreshed first by authMiddleware).
-const sessionUserId = async (req: Request): Promise<string | null> => {
-  const cookies = req.cookies ?? cookie.parse(req.headers.cookie ?? '');
-  const token: string | undefined = cookies[ACCESS_TOKEN_COOKIE];
-  if (!token) return null;
-  try {
-    return (await decodeToken(token)).data.id;
-  } catch {
-    return null;
-  }
-};
 
 export default createOAuthRouter(getOAuthServer, { sessionUserId, accountsOrigin: new URL(clientAccountsUrl || 'http://localhost').origin });

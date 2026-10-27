@@ -8,6 +8,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createOAuthRouter } from '../src/controllers/oauth';
 import { createWellKnownRouter } from '../src/controllers/well-known';
+import { createAccountAppsRouter } from '../src/controllers/account-apps';
 import { createOAuthServer, OAUTH_SCOPES } from '../src/integrations/oauthServer';
 import { createOAuthSigner, ephemeralSigningKey } from '../src/integrations/oauthKeys';
 import type { OAuthStore } from '../src/integrations/oauthStore';
@@ -46,8 +47,12 @@ const memory = () => {
     },
     revokeRefreshToken: async h => { const t = tokens.get(h); if (t) t.revoked_at = new Date().toISOString(); },
     revokeFamily: async f => { for (const t of tokens.values()) if (t.family_id === f) t.revoked_at ??= new Date().toISOString(); },
+    revokeClientTokens: async (u, c) => { for (const t of tokens.values()) if (t.user_id === u && t.client_id === c) t.revoked_at ??= new Date().toISOString(); },
     findConsent: async (u, c) => consents.get(`${u}:${c}`) ?? null,
-    saveConsent: async c => { consents.set(`${c.user_id}:${c.client_id}`, { ...c }); },
+    listConsents: async u => [...consents.values()].filter(c => c.user_id === u),
+    saveConsent: async c => { consents.set(`${c.user_id}:${c.client_id}`, { ...consents.get(`${c.user_id}:${c.client_id}`), ...c, updated_at: new Date().toISOString() }); },
+    deleteConsent: async (u, c) => { consents.delete(`${u}:${c}`); },
+    touchConsent: async (u, c) => { const consent = consents.get(`${u}:${c}`); if (consent) consent.last_used_at = new Date().toISOString(); },
   };
   return { store, clients, codes, tokens, consents };
 };
@@ -79,7 +84,11 @@ app.use('/oauth', createOAuthRouter(() => current, {
   sessionUserId: async req => (req.headers['x-test-user'] as string) ?? null,
   accountsOrigin: ACCOUNTS,
 }));
-app.use('/.well-known', createWellKnownRouter(() => current));
+app.use('/.well-known', createWellKnownRouter(() => current, ISSUER, [STREAMBY, `${STREAMBY}/mcp`]));
+app.use('/account/apps', createAccountAppsRouter(() => current, {
+  sessionUserId: async req => (req.headers['x-test-user'] as string) ?? null,
+  nhexaApps: async () => [{ id: 'c1', name: 'Apps', apps: [{ label: 'Spellcast', url: 'https://spellcast.nhexa.cl' }] }],
+}));
 
 let http: Server;
 let base: string;
@@ -424,6 +433,87 @@ describe('how often a client may call', () => {
       assert.equal((await tokenCall(url, { 'Fly-Client-IP': '203.0.113.99' })).status, 429);
     } finally {
       close();
+    }
+  });
+});
+
+describe("the user's connected apps", () => {
+  const apps = async (user = 'ada') => json(await fetch(`${base}/account/apps`, { headers: user ? { 'x-test-user': user } : {} }));
+  const remove = async (clientId: string, user = 'ada') =>
+    fetch(`${base}/account/apps/${encodeURIComponent(clientId)}`, { method: 'DELETE', headers: { 'x-test-user': user } });
+
+  it("lists Nhexa's apps and the ones the user approved, as they saw them, with when they last used it", async () => {
+    await flow();
+    const res = await apps();
+    assert.equal(res.status, 200);
+    assert.equal(res.body.nhexa[0].apps[0].label, 'Spellcast');
+    assert.equal(res.body.connected.length, 1);
+    const [app] = res.body.connected;
+    assert.equal(app.clientId, 'streamby');
+    assert.equal(app.name, 'StreamBy');
+    assert.equal(app.verified, true);
+    assert.deepEqual(app.scopes, ['profile', 'email', 'streamby:read']);
+    assert.ok(app.authorizedAt);
+    assert.ok(app.lastUsedAt, 'getting a token is a use');
+
+    // Renamed since: the list still shows what the user approved.
+    db.clients.get('streamby')!.name = 'Renamed';
+    assert.equal((await apps()).body.connected[0].name, 'StreamBy');
+    // Another user's are not theirs.
+    assert.deepEqual((await apps('bob')).body.connected, []);
+    assert.equal((await apps('')).status, 401);
+  });
+
+  it("an app that registered by itself isn't verified", async () => {
+    const reg = await json(await fetch(`${base}/oauth/register`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_name: 'Claude', redirect_uris: ['https://claude.example/cb'], token_endpoint_auth_method: 'none' }),
+    }));
+    await decide(authorizeParams({ client_id: reg.body.client_id, redirect_uri: 'https://claude.example/cb' }));
+    const app = (await apps()).body.connected.find((a: any) => a.clientId === reg.body.client_id);
+    assert.equal(app.name, 'Claude');
+    assert.equal(app.verified, false);
+  });
+
+  it("taking an app's access away ends its refresh tokens, and asks for consent again", async () => {
+    const { tokens } = await flow();
+    assert.equal((await getRequest(authorizeParams(), 'ada')).body.consented, true);
+    assert.equal((await remove('streamby')).status, 204);
+
+    assert.deepEqual((await apps()).body.connected, []);
+    const refreshed = await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.body.refresh_token }, ['streamby', SECRET]);
+    assert.equal(refreshed.body.error, 'invalid_grant');
+    assert.equal((await getRequest(authorizeParams(), 'ada')).body.consented, false);
+    // A resource server checking it is told the app has no access.
+    assert.equal(await current.appAccess('ada', 'streamby'), null);
+    // Its access token, still unexpired, no longer reads the user.
+    const info = await fetch(`${base}/oauth/userinfo`, { headers: { Authorization: `Bearer ${tokens.body.access_token}` } });
+    assert.equal(info.status, 401);
+
+    assert.equal((await remove('streamby')).status, 404);
+  });
+
+  it("taking one user's access away leaves another's", async () => {
+    USERS.bob = { id: 'bob', username: 'bob', email: 'bob@nhexa.cl', role: 'user', isVerified: true };
+    const { verifier, challenge } = pkce();
+    const params = authorizeParams({}, challenge);
+    const decision = await decide(params, true, { user: 'bob' });
+    const bobTokens = await tokenRequest({ grant_type: 'authorization_code', code: codeFrom(decision.body.redirectTo), redirect_uri: params.redirect_uri, code_verifier: verifier }, ['streamby', SECRET]);
+    await flow();
+    assert.equal((await remove('streamby', 'ada')).status, 204);
+    const refreshed = await tokenRequest({ grant_type: 'refresh_token', refresh_token: bobTokens.body.refresh_token }, ['streamby', SECRET]);
+    assert.equal(refreshed.status, 200);
+    delete USERS.bob;
+  });
+});
+
+describe('the protected resources', () => {
+  it("each one's metadata (RFC 9728) says to sign in with this server", async () => {
+    for (const resource of [STREAMBY, `${STREAMBY}/mcp`]) {
+      const res = await json(await fetch(`${base}/.well-known/oauth-protected-resource${new URL(resource).pathname}`));
+      assert.equal(res.status, 200, resource);
+      assert.equal(res.body.resource, resource);
+      assert.deepEqual(res.body.authorization_servers, [ISSUER]);
     }
   });
 });

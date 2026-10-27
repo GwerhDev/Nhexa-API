@@ -8,13 +8,25 @@ import { ACCESS_TOKEN_COOKIE } from '../integrations/cookies';
 import { decodeToken } from '../integrations/jwt';
 import { getOAuthServer } from '../integrations/oauth';
 import { ClientCredentials, OAuthError, OAuthServer } from '../integrations/oauthServer';
+import { oauthRateLimit, RateLimitOptions } from '../middleware/rateLimit';
 
 export interface OAuthRouterOptions {
   // The signed-in user's id (their Nhexa session), or null.
   sessionUserId: (req: Request) => Promise<string | null>;
   // accounts.nhexa.cl's origin: the only one that may send the user's answer.
   accountsOrigin: string;
+  // How many requests a client address may make to the endpoints anyone can call.
+  rateLimits?: Partial<Record<'authorizeRequest' | 'token' | 'register', RateLimitOptions>>;
 }
+
+const MINUTE = 60 * 1000;
+// Generous for people and apps, short of a flood. /token is called by app servers on behalf of
+// all their users (one address, many refreshes); /register is a client's once-in-a-while step.
+const DEFAULT_RATE_LIMITS: Record<'authorizeRequest' | 'token' | 'register', RateLimitOptions> = {
+  authorizeRequest: { windowMs: MINUTE, limit: 60 },
+  token: { windowMs: MINUTE, limit: 300 },
+  register: { windowMs: 60 * MINUTE, limit: 20 },
+};
 
 // The client's credentials: HTTP Basic (client_secret_basic) or in the body (client_secret_post).
 const credentialsOf = (req: Request): ClientCredentials => {
@@ -49,10 +61,11 @@ export function createOAuthRouter(getServer: () => OAuthServer | null, options: 
     next();
   });
   const server = () => getServer()!;
+  const limit = (endpoint: keyof typeof DEFAULT_RATE_LIMITS) => oauthRateLimit(options.rateLimits?.[endpoint] ?? DEFAULT_RATE_LIMITS[endpoint]);
 
   // What accounts.nhexa.cl shows: the client and the scopes the request asks for, once
   // checked, and whether the signed-in user already approved them.
-  router.get('/authorize/request', async (req: Request, res: Response) => {
+  router.get('/authorize/request', limit('authorizeRequest'), async (req: Request, res: Response) => {
     const params = req.query as Record<string, unknown>;
     try {
       const request = await server().checkAuthorize(params);
@@ -93,7 +106,7 @@ export function createOAuthRouter(getServer: () => OAuthServer | null, options: 
     }
   });
 
-  router.post('/token', validate(OAuthTokenSchema), async (req: Request, res: Response) => {
+  router.post('/token', limit('token'), validate(OAuthTokenSchema), async (req: Request, res: Response) => {
     try {
       noStore(res).json(await server().token(req.body, credentialsOf(req)));
     } catch (err) {
@@ -126,7 +139,7 @@ export function createOAuthRouter(getServer: () => OAuthServer | null, options: 
     }
   });
 
-  router.post('/register', validate(OAuthRegisterSchema), async (req: Request, res: Response) => {
+  router.post('/register', limit('register'), validate(OAuthRegisterSchema), async (req: Request, res: Response) => {
     try {
       noStore(res).status(201).json(await server().register(req.body));
     } catch (err) {

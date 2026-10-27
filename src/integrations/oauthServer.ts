@@ -184,6 +184,10 @@ export function createOAuthServer(deps: OAuthServerDeps) {
     };
   }
 
+  // The refresh tokens a code is exchanged for are one family, named after the code itself: if
+  // the code shows up again (it leaked), whatever it was exchanged for is revoked (RFC 6749 §4.1.2).
+  const familyOfCode = (codeHash: string) => `code:${codeHash}`;
+
   const pkceMatches = (verifier: string, challenge: string) =>
     /^[A-Za-z0-9._~-]{43,128}$/.test(verifier) && crypto.createHash('sha256').update(verifier).digest('base64url') === challenge;
 
@@ -195,8 +199,12 @@ export function createOAuthServer(deps: OAuthServerDeps) {
       const verifier = str(body.code_verifier);
       if (!code || !verifier || !str(body.redirect_uri)) throw new OAuthError('invalid_request', 'code, redirect_uri and code_verifier are required');
       // Spent now, whatever comes next: a code works once.
-      const record = await deps.store.useCode(sha256(code));
-      if (!record) throw new OAuthError('invalid_grant', 'The code is invalid or was already used');
+      const codeHash = sha256(code);
+      const record = await deps.store.useCode(codeHash);
+      if (!record) {
+        if (await deps.store.findCode(codeHash)) await deps.store.revokeFamily(familyOfCode(codeHash));
+        throw new OAuthError('invalid_grant', 'The code is invalid or was already used');
+      }
       if (record.client_id !== client.client_id || record.redirect_uri !== body.redirect_uri) {
         throw new OAuthError('invalid_grant', 'The code was issued to another client or redirect_uri');
       }
@@ -204,7 +212,7 @@ export function createOAuthServer(deps: OAuthServerDeps) {
       if (!pkceMatches(verifier, record.code_challenge)) throw new OAuthError('invalid_grant', 'code_verifier does not match the code_challenge');
       if (str(body.resource) && body.resource !== record.resource) throw new OAuthError('invalid_target', 'The code was issued for another resource');
       if (!(await deps.findUser(record.user_id))) throw new OAuthError('invalid_grant', 'The user no longer exists');
-      return issueTokens(client.client_id, record.user_id, record.scopes, record.resource, crypto.randomUUID());
+      return issueTokens(client.client_id, record.user_id, record.scopes, record.resource, familyOfCode(codeHash));
     }
 
     if (body.grant_type === 'refresh_token') {

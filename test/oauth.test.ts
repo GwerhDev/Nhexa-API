@@ -245,6 +245,18 @@ describe('the token endpoint', () => {
     assert.match(expired.body.error_description, /expired/);
   });
 
+  it('a code used again ends the tokens it was exchanged for', async () => {
+    const { params, verifier, code, tokens } = await flow();
+    assert.equal(tokens.status, 200);
+    const again = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: params.redirect_uri, code_verifier: verifier }, ['streamby', SECRET]);
+    assert.equal(again.body.error, 'invalid_grant');
+    const refreshed = await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.body.refresh_token }, ['streamby', SECRET]);
+    assert.equal(refreshed.body.error, 'invalid_grant');
+    // Another grant of the same user and client is left alone.
+    const other = await flow();
+    assert.equal((await tokenRequest({ grant_type: 'refresh_token', refresh_token: other.tokens.body.refresh_token }, ['streamby', SECRET])).status, 200);
+  });
+
   it("turns down a confidential client without its secret, and another client's code", async () => {
     const { verifier, challenge } = pkce();
     const params = authorizeParams({}, challenge);
@@ -352,5 +364,66 @@ describe('the metadata', () => {
     assert.deepEqual(meta.code_challenge_methods_supported, ['S256']);
     assert.equal(meta.client_id_metadata_document_supported, true);
     assert.equal(meta.registration_endpoint, `${ISSUER}/oauth/register`);
+  });
+});
+
+describe('how often a client may call', () => {
+  // A router of its own, with tiny limits, so the counts are only this suite's.
+  const limited = async (behindFly: boolean) => {
+    const few = { windowMs: 60 * 1000, limit: 2, behindFly };
+    const limitedApp = express();
+    limitedApp.use(express.json());
+    limitedApp.use(express.urlencoded({ extended: true }));
+    limitedApp.use('/oauth', createOAuthRouter(() => current, {
+      sessionUserId: async () => null, accountsOrigin: ACCOUNTS,
+      rateLimits: { authorizeRequest: few, token: few, register: few },
+    }));
+    const listening = limitedApp.listen(0);
+    await new Promise(resolve => listening.once('listening', resolve));
+    return { url: `http://127.0.0.1:${(listening.address() as AddressInfo).port}`, close: () => listening.close() };
+  };
+  const tokenCall = (url: string, headers: Record<string, string> = {}) =>
+    fetch(`${url}/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...headers }, body: 'grant_type=password' });
+
+  it('past the limit, an OAuth error with when to come back', async () => {
+    const { url, close } = await limited(false);
+    try {
+      for (let i = 0; i < 2; i++) assert.notEqual((await tokenCall(url)).status, 429);
+      const over = await tokenCall(url);
+      assert.equal(over.status, 429);
+      assert.ok(Number(over.headers.get('retry-after')) > 0);
+      assert.equal(((await over.json()) as { error: string }).error, 'temporarily_unavailable');
+
+      const request = `${url}/oauth/authorize/request?${new URLSearchParams(authorizeParams())}`;
+      for (let i = 0; i < 2; i++) assert.equal((await fetch(request)).status, 200);
+      assert.equal((await fetch(request)).status, 429);
+
+      const register = () => fetch(`${url}/oauth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_name: 'X', redirect_uris: ['https://x.example/cb'], token_endpoint_auth_method: 'none' }) });
+      for (let i = 0; i < 2; i++) assert.equal((await register()).status, 201);
+      assert.equal((await register()).status, 429);
+    } finally {
+      close();
+    }
+  });
+
+  it("behind Fly, counts each client by Fly-Client-IP (not the proxy's address)", async () => {
+    const { url, close } = await limited(true);
+    try {
+      for (let i = 0; i < 2; i++) await tokenCall(url, { 'Fly-Client-IP': '203.0.113.7' });
+      assert.equal((await tokenCall(url, { 'Fly-Client-IP': '203.0.113.7' })).status, 429);
+      assert.notEqual((await tokenCall(url, { 'Fly-Client-IP': '198.51.100.9' })).status, 429);
+    } finally {
+      close();
+    }
+  });
+
+  it("anywhere else, a Fly-Client-IP sent by the client doesn't get it a fresh count", async () => {
+    const { url, close } = await limited(false);
+    try {
+      for (let i = 0; i < 2; i++) await tokenCall(url, { 'Fly-Client-IP': `203.0.113.${i}` });
+      assert.equal((await tokenCall(url, { 'Fly-Client-IP': '203.0.113.99' })).status, 429);
+    } finally {
+      close();
+    }
   });
 });

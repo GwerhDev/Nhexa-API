@@ -5,9 +5,12 @@ import type { OAuthClient, OAuthScope } from '../types';
 // Clients identified by a Client ID Metadata Document: their client_id is an https URL, and
 // what's at it (JSON) says what they are — their name and redirect URIs. Nothing is stored:
 // the document is fetched (from the server, so never at a local or private address, nor
-// following a redirect) and kept for a few minutes.
+// following a redirect) and kept for a few minutes. Only documents that made a client are
+// kept, and only so many: a failure is tried again next time, and a flood of client_ids can't
+// fill the memory.
 
 const CACHE_MS = 10 * 60 * 1000;
+const MAX_CACHED = 500;
 const MAX_BYTES = 64 * 1024;
 const TIMEOUT_MS = 5000;
 
@@ -47,8 +50,35 @@ export type LookupLike = (host: string) => Promise<string[]>;
 
 const defaultLookup: LookupLike = async host => (await dns.lookup(host, { all: true })).map(a => a.address);
 
+// The body, read as it arrives and given up on as soon as it passes `max` bytes: a huge (or
+// endless) document is never held whole.
+async function readLimited(res: Response, max: number): Promise<string> {
+  if (Number(res.headers.get('content-length')) > max) throw new ClientMetadataError("client_id's document is too large");
+  if (!res.body) return '';
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => undefined);
+      throw new ClientMetadataError("client_id's document is too large");
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 export function createClientMetadataResolver(scopes: OAuthScope[], fetcher: FetchLike = fetch, lookup: LookupLike = defaultLookup) {
+  // In insertion order, so the first entry is the oldest.
   const cache = new Map<string, { client: OAuthClient; until: number }>();
+  const remember = (clientId: string, client: OAuthClient) => {
+    cache.delete(clientId);
+    if (cache.size >= MAX_CACHED) cache.delete(cache.keys().next().value as string);
+    cache.set(clientId, { client, until: Date.now() + CACHE_MS });
+  };
 
   return async function resolve(clientId: string): Promise<OAuthClient> {
     const cached = cache.get(clientId);
@@ -65,11 +95,10 @@ export function createClientMetadataResolver(scopes: OAuthScope[], fetcher: Fetc
     try {
       const res = await fetcher(clientId, { redirect: 'error', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (!res.ok) throw new ClientMetadataError(`client_id's document answered ${res.status}`);
-      text = await res.text();
+      text = await readLimited(res, MAX_BYTES);
     } catch (err) {
       throw err instanceof ClientMetadataError ? err : new ClientMetadataError("client_id's document couldn't be fetched");
     }
-    if (text.length > MAX_BYTES) throw new ClientMetadataError("client_id's document is too large");
 
     let doc: Record<string, unknown>;
     try { doc = JSON.parse(text); } catch { throw new ClientMetadataError("client_id's document is not JSON"); }
@@ -91,7 +120,7 @@ export function createClientMetadataResolver(scopes: OAuthScope[], fetcher: Fetc
       scopes,
       registration: 'metadata',
     };
-    cache.set(clientId, { client, until: Date.now() + CACHE_MS });
+    remember(clientId, client);
     return client;
   };
 }

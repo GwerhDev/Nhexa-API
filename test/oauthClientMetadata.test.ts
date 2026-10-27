@@ -43,6 +43,52 @@ describe('a client ID metadata document', () => {
     await assert.rejects(resolverWith(doc()).resolve('http://agent.example/c.json'));
   });
 
+  it('is read as it arrives, and given up on as soon as it is too large', async () => {
+    let pulled = 0;
+    let cancelled = false;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) { pulled += 1; controller.enqueue(new Uint8Array(16 * 1024).fill(32)); },
+      cancel() { cancelled = true; },
+    }, { highWaterMark: 0 });
+    const resolve = createClientMetadataResolver(OAUTH_SCOPES, async () => new Response(endless), async () => ['93.184.216.34']);
+    await assert.rejects(resolve(URL_ID), /too large/);
+    assert.ok(pulled <= 6, `read ${pulled} chunks of 16 KiB`);
+    assert.equal(cancelled, true);
+  });
+
+  it('is turned down unread when it says it is too large', async () => {
+    let pulled = 0;
+    const body = new ReadableStream<Uint8Array>({ pull(controller) { pulled += 1; controller.enqueue(new TextEncoder().encode(doc())); controller.close(); } }, { highWaterMark: 0 });
+    const resolve = createClientMetadataResolver(OAUTH_SCOPES, async () => new Response(body, { headers: { 'Content-Length': String(10 * 1024 * 1024) } }), async () => ['93.184.216.34']);
+    await assert.rejects(resolve(URL_ID), /too large/);
+    assert.equal(pulled, 0);
+  });
+
+  it('is fetched again after a failure: only documents that made a client are kept', async () => {
+    let fetched = 0;
+    const resolve = createClientMetadataResolver(OAUTH_SCOPES, async () => {
+      fetched += 1;
+      return fetched === 1 ? new Response('down', { status: 503 }) : new Response(doc());
+    }, async () => ['93.184.216.34']);
+    await assert.rejects(resolve(URL_ID));
+    assert.equal((await resolve(URL_ID)).name, 'Agent');
+    assert.equal(fetched, 2);
+  });
+
+  it('keeps only so many documents, letting the oldest go first', async () => {
+    const fetched = new Map<string, number>();
+    const resolve = createClientMetadataResolver(OAUTH_SCOPES, async url => {
+      fetched.set(url, (fetched.get(url) ?? 0) + 1);
+      return new Response(JSON.stringify({ client_id: url, redirect_uris: ['https://agent.example/cb'] }));
+    }, async () => ['93.184.216.34']);
+    const id = (i: number) => `https://agent.example/clients/${i}.json`;
+    for (let i = 0; i <= 500; i++) await resolve(id(i));
+    await resolve(id(500));
+    assert.equal(fetched.get(id(500)), 1, 'the newest is still kept');
+    await resolve(id(0));
+    assert.equal(fetched.get(id(0)), 2, 'the oldest was let go');
+  });
+
   it('knows a private address when it sees one', () => {
     for (const ip of ['0.0.0.0', '10.1.1.1', '192.168.0.1', '198.18.0.1', '224.0.0.1', '::', '::1', 'fe80::1', '::ffff:10.0.0.1']) assert.equal(isPrivateIp(ip), true, ip);
     for (const ip of ['8.8.8.8', '2606:4700::1111', '::ffff:8.8.8.8']) assert.equal(isPrivateIp(ip), false, ip);

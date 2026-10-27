@@ -59,3 +59,16 @@ CREATE TABLE IF NOT EXISTS accounts.oauth_consents (
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   accounts.oauth_clients, accounts.oauth_codes, accounts.oauth_tokens, accounts.oauth_consents
   TO service_role;
+
+-- Secret material (hashes of codes, tokens and client secrets): only the API may read it.
+-- Supabase grants new tables to `anon` and `authenticated` (the keys browsers hold, through
+-- PostgREST), so those grants are taken back, and row level security is on with no policy, so
+-- even a grant made later lets them see no row. The API's service role bypasses RLS.
+-- Both statements can run again without changing anything.
+REVOKE ALL ON
+  accounts.oauth_clients, accounts.oauth_codes, accounts.oauth_tokens, accounts.oauth_consents
+  FROM anon, authenticated;
+ALTER TABLE accounts.oauth_clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE accounts.oauth_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE accounts.oauth_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE accounts.oauth_consents ENABLE ROW LEVEL SECURITY;

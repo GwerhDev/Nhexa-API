@@ -42,6 +42,7 @@ interface Messages {
     loginRequired: string;
     forbiddenOrigin: string;
     error: string;
+    tooManyRequests: string;
   };
 }
 
@@ -114,5 +115,6 @@ export const message: Messages = {
     loginRequired: 'Log in first',
     forbiddenOrigin: 'This request must come from Nhexa Accounts',
     error: 'The OAuth server failed',
+    tooManyRequests: 'Too many requests: try again later',
   },
 };

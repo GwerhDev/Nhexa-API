@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     # One deploy at a time: a newer push waits for the one in progress.
     concurrency: deploy-group
+    # A deploy takes a few minutes; one that hangs (flyctl waiting on a machine) is cut short
+    # instead of holding every later push for GitHub's default six hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

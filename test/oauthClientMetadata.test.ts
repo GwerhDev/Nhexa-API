@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ClientMetadataError, createClientMetadataResolver, isPrivateIp, USER_AGENT } from '../src/integrations/oauthClientMetadata';
+import { ClientMetadataError, createClientMetadataResolver, isPrivateIp, PINNED_DOCUMENTS, USER_AGENT } from '../src/integrations/oauthClientMetadata';
 import { OAUTH_SCOPES } from '../src/integrations/oauthServer';
 
 const URL_ID = 'https://agent.example/oauth/client.json';
@@ -126,6 +126,45 @@ describe('a client ID metadata document', () => {
     const missing = await failure(fetching(async () => new Response('gone', { status: 404 })));
     assert.deepEqual([missing.temporary, missing.detail], [false, 'HTTP 404']);
     assert.equal((await failure(fetching(async () => new Response(doc()), async () => ['10.0.0.5']))).temporary, false);
+  });
+
+  // A pinned client's document, when its host turns the server down: the copy, read as the
+  // document would be; a document fetched always wins.
+  const CLAUDE_ID = 'https://claude.ai/oauth/mcp-oauth-client-metadata';
+  const pinning = (fetcher: () => Promise<Response>) => {
+    const logged: string[] = [];
+    let fetched = 0;
+    const resolve = createClientMetadataResolver(OAUTH_SCOPES, async () => { fetched += 1; return fetcher(); }, async () => ['104.18.32.47'], line => logged.push(line));
+    return { resolve, logged, fetched: () => fetched };
+  };
+
+  it("a pinned client whose document can't be fetched is its pinned copy, logged, and fetched again next time", async () => {
+    assert.ok(PINNED_DOCUMENTS[CLAUDE_ID]);
+    const { resolve, logged, fetched } = pinning(async () => new Response('Just a moment...', { status: 403 }));
+    const client = await resolve(CLAUDE_ID);
+    assert.equal(client.name, 'Claude');
+    assert.equal(client.type, 'public');
+    assert.deepEqual(client.redirect_uris, ['https://claude.ai/api/mcp/auth_callback']);
+    assert.deepEqual(logged, [`[oauth] client metadata ${CLAUDE_ID}: using the pinned copy, client_id's document answered 403 (HTTP 403)`]);
+    await resolve(CLAUDE_ID);
+    assert.equal(fetched(), 2);
+    assert.equal((await pinning(async () => new Response('no', { status: 403 })).resolve('https://claude.ai/oauth/claude-code-client-metadata')).name, 'Claude Code');
+  });
+
+  it("one not pinned whose document can't be fetched is still a temporary failure", async () => {
+    const { resolve, logged } = pinning(async () => new Response('Just a moment...', { status: 403 }));
+    const err = await failure(resolve);
+    assert.deepEqual([err.temporary, err.detail], [true, 'HTTP 403']);
+    assert.deepEqual(logged, []);
+  });
+
+  it('a pinned client whose document is fetched is what the document says', async () => {
+    const fetchedDoc = JSON.stringify({ client_id: CLAUDE_ID, client_name: 'Claude (fetched)', redirect_uris: ['https://claude.ai/api/mcp/new_callback'] });
+    const { resolve, logged } = pinning(async () => new Response(fetchedDoc));
+    const client = await resolve(CLAUDE_ID);
+    assert.equal(client.name, 'Claude (fetched)');
+    assert.deepEqual(client.redirect_uris, ['https://claude.ai/api/mcp/new_callback']);
+    assert.deepEqual(logged, []);
   });
 
   it('knows a private address when it sees one', () => {

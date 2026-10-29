@@ -93,7 +93,58 @@ async function readLimited(res: Response, max: number): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-export function createClientMetadataResolver(scopes: OAuthScope[], fetcher: FetchLike = fetch, lookup: LookupLike = defaultLookup) {
+// Copies of the documents of clients whose host turns a datacenter's request down (claude.ai's
+// Cloudflare answers Fly with 403), as they were fetched from elsewhere. Used only when fetching
+// the document fails: one fetched always wins, and a copy is read as one fetched would be.
+export const PINNED_DOCUMENTS: Record<string, string> = {
+  'https://claude.ai/oauth/mcp-oauth-client-metadata': JSON.stringify({
+    client_id: 'https://claude.ai/oauth/mcp-oauth-client-metadata',
+    client_name: 'Claude',
+    client_uri: 'https://claude.ai',
+    redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+    grant_types: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:jwt-bearer'],
+    response_types: ['code'],
+    token_endpoint_auth_method: 'none',
+  }),
+  'https://claude.ai/oauth/claude-code-client-metadata': JSON.stringify({
+    client_id: 'https://claude.ai/oauth/claude-code-client-metadata',
+    client_name: 'Claude Code',
+    client_uri: 'https://claude.ai',
+    redirect_uris: ['http://localhost/callback', 'http://127.0.0.1/callback'],
+    grant_types: ['authorization_code', 'refresh_token'],
+    response_types: ['code'],
+    token_endpoint_auth_method: 'none',
+  }),
+};
+
+// The client a document makes, or why it makes none.
+function clientOf(clientId: string, url: URL, text: string, scopes: OAuthScope[]): OAuthClient {
+  let doc: Record<string, unknown>;
+  try { doc = JSON.parse(text); } catch { throw new ClientMetadataError("client_id's document is not JSON"); }
+  if (doc.client_id !== clientId) throw new ClientMetadataError("client_id's document names another client_id");
+  const method = doc.token_endpoint_auth_method ?? 'none';
+  if (method !== 'none') throw new ClientMetadataError('A metadata document client authenticates with none (PKCE only)');
+  const redirectUris = Array.isArray(doc.redirect_uris) ? doc.redirect_uris.filter((u): u is string => typeof u === 'string') : [];
+  if (!redirectUris.length) throw new ClientMetadataError("client_id's document has no redirect_uris");
+  const name = typeof doc.client_name === 'string' && doc.client_name.trim() ? doc.client_name.trim().slice(0, 100) : url.host;
+
+  return {
+    client_id: clientId,
+    client_secret_hash: null,
+    type: 'public',
+    name,
+    logo_uri: typeof doc.logo_uri === 'string' && doc.logo_uri.startsWith('https://') ? doc.logo_uri : null,
+    client_uri: typeof doc.client_uri === 'string' && doc.client_uri.startsWith('https://') ? doc.client_uri : null,
+    redirect_uris: redirectUris,
+    scopes,
+    registration: 'metadata',
+  };
+}
+
+export function createClientMetadataResolver(
+  scopes: OAuthScope[], fetcher: FetchLike = fetch, lookup: LookupLike = defaultLookup,
+  log: (line: string) => void = console.info,
+) {
   // In insertion order, so the first entry is the oldest.
   const cache = new Map<string, { client: OAuthClient; until: number }>();
   const remember = (clientId: string, client: OAuthClient) => {
@@ -102,11 +153,8 @@ export function createClientMetadataResolver(scopes: OAuthScope[], fetcher: Fetc
     cache.set(clientId, { client, until: Date.now() + CACHE_MS });
   };
 
-  return async function resolve(clientId: string): Promise<OAuthClient> {
-    const cached = cache.get(clientId);
-    if (cached && cached.until > Date.now()) return cached.client;
-
-    const url = checkUrl(clientId);
+  // The document at the client_id, from its host: never at a local or private address.
+  const fetchDocument = async (clientId: string, url: URL): Promise<string> => {
     const host = url.hostname.replace(/^\[|\]$/g, '');
     if (/^(localhost|.*\.local|.*\.internal)$/i.test(host)) throw new ClientMetadataError("client_id's host is not reachable");
     let addresses: string[];
@@ -118,37 +166,33 @@ export function createClientMetadataResolver(scopes: OAuthScope[], fetcher: Fetc
     if (!addresses.length) throw new ClientMetadataError("client_id's host couldn't be looked up", true, 'no address');
     if (addresses.some(isPrivateIp)) throw new ClientMetadataError("client_id's host is not reachable");
 
-    let text: string;
     try {
       const res = await fetcher(clientId, {
         redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       if (!res.ok) throw new ClientMetadataError(`client_id's document answered ${res.status}`, temporaryStatus(res.status), `HTTP ${res.status}`);
-      text = await readLimited(res, MAX_BYTES);
+      return await readLimited(res, MAX_BYTES);
     } catch (err) {
       throw err instanceof ClientMetadataError ? err : new ClientMetadataError("client_id's document couldn't be fetched", true, causeOf(err));
     }
+  };
 
-    let doc: Record<string, unknown>;
-    try { doc = JSON.parse(text); } catch { throw new ClientMetadataError("client_id's document is not JSON"); }
-    if (doc.client_id !== clientId) throw new ClientMetadataError("client_id's document names another client_id");
-    const method = doc.token_endpoint_auth_method ?? 'none';
-    if (method !== 'none') throw new ClientMetadataError('A metadata document client authenticates with none (PKCE only)');
-    const redirectUris = Array.isArray(doc.redirect_uris) ? doc.redirect_uris.filter((u): u is string => typeof u === 'string') : [];
-    if (!redirectUris.length) throw new ClientMetadataError("client_id's document has no redirect_uris");
-    const name = typeof doc.client_name === 'string' && doc.client_name.trim() ? doc.client_name.trim().slice(0, 100) : url.host;
+  return async function resolve(clientId: string): Promise<OAuthClient> {
+    const cached = cache.get(clientId);
+    if (cached && cached.until > Date.now()) return cached.client;
 
-    const client: OAuthClient = {
-      client_id: clientId,
-      client_secret_hash: null,
-      type: 'public',
-      name,
-      logo_uri: typeof doc.logo_uri === 'string' && doc.logo_uri.startsWith('https://') ? doc.logo_uri : null,
-      client_uri: typeof doc.client_uri === 'string' && doc.client_uri.startsWith('https://') ? doc.client_uri : null,
-      redirect_uris: redirectUris,
-      scopes,
-      registration: 'metadata',
-    };
+    const url = checkUrl(clientId);
+    let text: string;
+    try {
+      text = await fetchDocument(clientId, url);
+    } catch (err) {
+      const pinned = PINNED_DOCUMENTS[clientId];
+      if (!pinned || !(err instanceof ClientMetadataError)) throw err;
+      log(`[oauth] client metadata ${clientId}: using the pinned copy, ${err.message}${err.detail ? ` (${err.detail})` : ''}`);
+      // Not kept: the next time, the document is fetched again.
+      return clientOf(clientId, url, pinned, scopes);
+    }
+    const client = clientOf(clientId, url, text, scopes);
     remember(clientId, client);
     return client;
   };

@@ -30,6 +30,8 @@ router.post('/', validate(SignupInnerSchema), async (req: Request, res: Response
     const userDataToCreate: Partial<UserRecord> & Record<string, unknown> = {
       username,
       password: hashedPassword,
+      // An account made with a password has one set from the start (Security shows it).
+      passwordSetAt: new Date().toISOString(),
       email,
       profilePic: null,
       isVerified: false,

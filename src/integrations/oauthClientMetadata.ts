@@ -13,8 +13,30 @@ const CACHE_MS = 10 * 60 * 1000;
 const MAX_CACHED = 500;
 const MAX_BYTES = 64 * 1024;
 const TIMEOUT_MS = 5000;
+// Who's asking, as a document's host sees it: some (Cloudflare's) turn a datacenter's request
+// without one down at once.
+export const USER_AGENT = 'Nhexa-OAuth/1.0 (+https://nhexa.cl)';
 
-export class ClientMetadataError extends Error {}
+/**
+ * Why a client's metadata document didn't make a client: `temporary` when it couldn't be fetched
+ * (the network, a timeout, its host answering 403, 408, 429 or 5xx) — try again later — and not
+ * when what it is turns it down. `detail` is the cause, for the log (an error code, a status).
+ */
+export class ClientMetadataError extends Error {
+  constructor(message: string, public temporary = false, public detail?: string) {
+    super(message);
+  }
+}
+
+// What a failed fetch or lookup says of why: its cause's code (ECONNRESET, ENOTFOUND...), or its
+// name (TimeoutError). Codes as text only: a DOMException's is a number (a timeout's is 23).
+const causeOf = (err: unknown): string | undefined => {
+  const e = err as { code?: unknown; name?: unknown; cause?: { code?: unknown; name?: unknown; message?: unknown } } | null;
+  return [e?.cause?.code, e?.code, e?.cause?.name, e?.name, e?.cause?.message]
+    .find((v): v is string => typeof v === 'string' && !!v && v !== 'Error' && v !== 'TypeError');
+};
+// The statuses that say "not now", not "not this": the host refusing for now, overloaded, down.
+const temporaryStatus = (status: number) => status === 403 || status === 408 || status === 429 || status >= 500;
 
 /** Whether a client_id is a metadata document's URL (and not a registered client's id). */
 export const isMetadataClientId = (clientId: string): boolean => clientId.startsWith('https://');
@@ -86,18 +108,25 @@ export function createClientMetadataResolver(scopes: OAuthScope[], fetcher: Fetc
 
     const url = checkUrl(clientId);
     const host = url.hostname.replace(/^\[|\]$/g, '');
-    const addresses = isIP(host) ? [host] : await lookup(host).catch(() => []);
-    if (!addresses.length || addresses.some(isPrivateIp) || /^(localhost|.*\.local|.*\.internal)$/i.test(host)) {
-      throw new ClientMetadataError("client_id's host is not reachable");
+    if (/^(localhost|.*\.local|.*\.internal)$/i.test(host)) throw new ClientMetadataError("client_id's host is not reachable");
+    let addresses: string[];
+    try {
+      addresses = isIP(host) ? [host] : await lookup(host);
+    } catch (err) {
+      throw new ClientMetadataError("client_id's host couldn't be looked up", true, causeOf(err));
     }
+    if (!addresses.length) throw new ClientMetadataError("client_id's host couldn't be looked up", true, 'no address');
+    if (addresses.some(isPrivateIp)) throw new ClientMetadataError("client_id's host is not reachable");
 
     let text: string;
     try {
-      const res = await fetcher(clientId, { redirect: 'error', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-      if (!res.ok) throw new ClientMetadataError(`client_id's document answered ${res.status}`);
+      const res = await fetcher(clientId, {
+        redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) throw new ClientMetadataError(`client_id's document answered ${res.status}`, temporaryStatus(res.status), `HTTP ${res.status}`);
       text = await readLimited(res, MAX_BYTES);
     } catch (err) {
-      throw err instanceof ClientMetadataError ? err : new ClientMetadataError("client_id's document couldn't be fetched");
+      throw err instanceof ClientMetadataError ? err : new ClientMetadataError("client_id's document couldn't be fetched", true, causeOf(err));
     }
 
     let doc: Record<string, unknown>;

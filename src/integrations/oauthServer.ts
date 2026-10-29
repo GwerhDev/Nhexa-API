@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import type { ConnectedApp, OAuthAuthorizeRequest, OAuthClient, OAuthConsent, OAuthScope, UserRecord } from '../types';
 import type { OAuthStore } from './oauthStore';
 import type { OAuthSigner } from './oauthKeys';
-import { isMetadataClientId } from './oauthClientMetadata';
+import { ClientMetadataError, isMetadataClientId } from './oauthClientMetadata';
 
 // Nhexa's OAuth 2 authorization server (the OAuth 2.1 profile): the authorization code grant,
 // always with PKCE (S256), and refresh tokens, rotated on every use. Access tokens are JWTs
@@ -33,6 +33,8 @@ export interface OAuthServerDeps {
   // What access tokens can be for (their audience); the first is the default.
   resources: string[];
   now?: () => number;
+  // Where what went wrong is told (never a token nor a secret): the console by default.
+  log?: (line: string) => void;
 }
 
 export interface ClientCredentials {
@@ -74,10 +76,22 @@ export function createOAuthServer(deps: OAuthServerDeps) {
   const nowIso = () => new Date(now()).toISOString();
   const inSeconds = (seconds: number) => new Date(now() + seconds * 1000).toISOString();
 
+  const log = deps.log ?? ((line: string) => console.warn(line));
+
+  // A metadata document client's document that couldn't be fetched isn't an unknown client:
+  // it's a "try again" (503), never cached; one that turns it down is unknown (invalid_client).
+  // Why is told either way.
   async function findClient(clientId: string | undefined): Promise<OAuthClient | null> {
     if (!clientId) return null;
     if (isMetadataClientId(clientId)) {
-      try { return await deps.resolveMetadataClient(clientId); } catch { return null; }
+      try {
+        return await deps.resolveMetadataClient(clientId);
+      } catch (err) {
+        const reason = err instanceof ClientMetadataError ? err : null;
+        log(`[oauth] client metadata ${clientId}: ${err instanceof Error ? err.message : String(err)}${reason?.detail ? ` (${reason.detail})` : ''}`);
+        if (reason?.temporary) throw new OAuthError('temporarily_unavailable', "The client's metadata document couldn't be fetched: try again later", 503);
+        return null;
+      }
     }
     return deps.store.findClient(clientId);
   }
@@ -196,6 +210,7 @@ export function createOAuthServer(deps: OAuthServerDeps) {
     /^[A-Za-z0-9._~-]{43,128}$/.test(verifier) && crypto.createHash('sha256').update(verifier).digest('base64url') === challenge;
 
   async function token(body: Record<string, unknown>, credentials: ClientCredentials) {
+    if (body.grant_type === 'refresh_token') return refresh(body, credentials);
     const client = await authenticate(credentials);
 
     if (body.grant_type === 'authorization_code') {
@@ -219,29 +234,34 @@ export function createOAuthServer(deps: OAuthServerDeps) {
       return issueTokens(client.client_id, record.user_id, record.scopes, record.resource, familyOfCode(codeHash));
     }
 
-    if (body.grant_type === 'refresh_token') {
-      const refreshToken = str(body.refresh_token);
-      if (!refreshToken) throw new OAuthError('invalid_request', 'refresh_token is required');
-      const hash = sha256(refreshToken);
-      const record = await deps.store.findRefreshToken(hash);
-      if (!record || record.client_id !== client.client_id || record.revoked_at) throw new OAuthError('invalid_grant', 'The refresh token is invalid');
-      if (new Date(record.expires_at).getTime() <= now()) throw new OAuthError('invalid_grant', 'The refresh token has expired');
-      // A refresh token works once: one used again (stolen, or replayed) ends its whole family.
-      const rotated = record.rotated_at ? null : await deps.store.rotateRefreshToken(hash);
-      if (!rotated) {
-        await deps.store.revokeFamily(record.family_id);
-        throw new OAuthError('invalid_grant', 'The refresh token was already used');
-      }
-      const scopes = str(body.scope) ? scopesOf(str(body.scope), record.scopes) : record.scopes;
-      if (str(body.resource) && body.resource !== record.resource) throw new OAuthError('invalid_target', 'The refresh token is for another resource');
-      if (!(await deps.findUser(record.user_id))) {
-        await deps.store.revokeFamily(record.family_id);
-        throw new OAuthError('invalid_grant', 'The user no longer exists');
-      }
-      return issueTokens(client.client_id, record.user_id, scopes, record.resource, record.family_id);
-    }
-
     throw new OAuthError('unsupported_grant_type', "grant_type must be 'authorization_code' or 'refresh_token'");
+  }
+
+  // A refresh: the refresh token is bound to its client already, so a public client may renew
+  // with it alone, without its client_id (RFC 6749 §6); a confidential one still with its secret.
+  // One given is the token's own client's, or the token isn't for it.
+  async function refresh(body: Record<string, unknown>, credentials: ClientCredentials) {
+    const refreshToken = str(body.refresh_token);
+    if (!refreshToken) throw new OAuthError('invalid_request', 'refresh_token is required');
+    const hash = sha256(refreshToken);
+    const record = await deps.store.findRefreshToken(hash);
+    if (!record) throw new OAuthError('invalid_grant', 'The refresh token is invalid');
+    const client = await authenticate({ clientId: credentials.clientId ?? record.client_id, clientSecret: credentials.clientSecret });
+    if (record.client_id !== client.client_id || record.revoked_at) throw new OAuthError('invalid_grant', 'The refresh token is invalid');
+    if (new Date(record.expires_at).getTime() <= now()) throw new OAuthError('invalid_grant', 'The refresh token has expired');
+    // A refresh token works once: one used again (stolen, or replayed) ends its whole family.
+    const rotated = record.rotated_at ? null : await deps.store.rotateRefreshToken(hash);
+    if (!rotated) {
+      await deps.store.revokeFamily(record.family_id);
+      throw new OAuthError('invalid_grant', 'The refresh token was already used');
+    }
+    const scopes = str(body.scope) ? scopesOf(str(body.scope), record.scopes) : record.scopes;
+    if (str(body.resource) && body.resource !== record.resource) throw new OAuthError('invalid_target', 'The refresh token is for another resource');
+    if (!(await deps.findUser(record.user_id))) {
+      await deps.store.revokeFamily(record.family_id);
+      throw new OAuthError('invalid_grant', 'The user no longer exists');
+    }
+    return issueTokens(client.client_id, record.user_id, scopes, record.resource, record.family_id);
   }
 
   /** The user an access token is for, as its scopes let it see them (profile, email). */

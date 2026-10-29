@@ -6,6 +6,7 @@ import { OAuthDecisionSchema, OAuthRegisterSchema, OAuthRevokeSchema, OAuthToken
 import { sessionUserId } from '../integrations/session';
 import { getOAuthServer } from '../integrations/oauth';
 import { ClientCredentials, OAuthError, OAuthServer } from '../integrations/oauthServer';
+import { isMetadataClientId } from '../integrations/oauthClientMetadata';
 import { oauthRateLimit, RateLimitOptions } from '../middleware/rateLimit';
 
 export interface OAuthRouterOptions {
@@ -83,7 +84,8 @@ export function createOAuthRouter(getServer: () => OAuthServer | null, options: 
     } catch (err) {
       if (!(err instanceof OAuthError)) return sendError(res, err);
       const redirectTo = await server().errorRedirect(params, err);
-      res.status(400).json({ error: err.error, error_description: err.message, ...(redirectTo ? { redirectTo } : {}) });
+      // A "try again" (503) stays one: the client isn't unknown, its document couldn't be read.
+      res.status(err.status === 503 ? 503 : 400).json({ error: err.error, error_description: err.message, ...(redirectTo ? { redirectTo } : {}) });
     }
   });
 
@@ -100,15 +102,22 @@ export function createOAuthRouter(getServer: () => OAuthServer | null, options: 
     } catch (err) {
       if (!(err instanceof OAuthError)) return sendError(res, err);
       const redirectTo = await server().errorRedirect(req.body.request, err);
-      res.status(400).json({ error: err.error, error_description: err.message, ...(redirectTo ? { redirectTo } : {}) });
+      res.status(err.status === 503 ? 503 : 400).json({ error: err.error, error_description: err.message, ...(redirectTo ? { redirectTo } : {}) });
     }
   });
 
   router.post('/token', limit('token'), validate(OAuthTokenSchema), async (req: Request, res: Response) => {
+    const credentials = credentialsOf(req);
     try {
-      noStore(res).json(await server().token(req.body, credentialsOf(req)));
+      noStore(res).json(await server().token(req.body, credentials));
     } catch (err) {
       noStore(res);
+      // What failed, for the log: the grant, the error, and whose client_id (if any) — never
+      // the code, a token nor a secret.
+      if (err instanceof OAuthError) {
+        const kind = !credentials.clientId ? 'none' : isMetadataClientId(credentials.clientId) ? 'metadata' : 'registered';
+        console.warn(`[oauth] token: grant_type=${String(req.body?.grant_type ?? '-')} error=${err.error} client_id=${kind}${credentials.clientSecret ? ' with secret' : ''}: ${err.message}`);
+      }
       sendError(res, err);
     }
   });

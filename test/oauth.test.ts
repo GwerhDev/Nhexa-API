@@ -10,6 +10,7 @@ import { createOAuthRouter } from '../src/controllers/oauth';
 import { createWellKnownRouter } from '../src/controllers/well-known';
 import { createAccountAppsRouter } from '../src/controllers/account-apps';
 import { createOAuthServer, OAUTH_SCOPES } from '../src/integrations/oauthServer';
+import { ClientMetadataError } from '../src/integrations/oauthClientMetadata';
 import { createOAuthSigner, ephemeralSigningKey } from '../src/integrations/oauthKeys';
 import type { OAuthStore } from '../src/integrations/oauthStore';
 import type { OAuthClient, OAuthCode, OAuthConsent, OAuthRefreshToken, UserRecord } from '../src/types';
@@ -68,9 +69,17 @@ const metadataClient: OAuthClient = {
   client_id: 'https://claude.example/oauth/client.json', client_secret_hash: null, type: 'public', name: 'Claude',
   logo_uri: null, client_uri: null, redirect_uris: ['https://claude.example/callback'], scopes: OAUTH_SCOPES, registration: 'metadata',
 };
+// What resolving metadataClient's document fails with, when it does (its host down, a bad document).
+let metadataFailure: Error | null = null;
+const logged: string[] = [];
 const server = () => createOAuthServer({
   store: db.store, signer,
-  resolveMetadataClient: async id => { if (id === metadataClient.client_id) return metadataClient; throw new Error('no'); },
+  resolveMetadataClient: async id => {
+    if (metadataFailure) throw metadataFailure;
+    if (id === metadataClient.client_id) return metadataClient;
+    throw new Error('no');
+  },
+  log: line => { logged.push(line); },
   findUser: async id => (USERS[id] as UserRecord) ?? null,
   issuer: ISSUER, authorizationEndpoint: `${ACCOUNTS}/oauth/authorize`,
   resources: [STREAMBY, `${STREAMBY}/mcp`], now: () => clock,
@@ -145,6 +154,8 @@ const flow = async (over: Record<string, string> = {}) => {
 };
 
 beforeEach(() => {
+  metadataFailure = null;
+  logged.length = 0;
   db = memory();
   db.clients.set('streamby', { ...STREAMBY_CLIENT });
   clock = Date.now();
@@ -306,6 +317,94 @@ describe('the token endpoint', () => {
 
   it('answers OAuth errors for what it does not support', async () => {
     assert.equal((await tokenRequest({ grant_type: 'password' }, ['streamby', SECRET])).body.error, 'unsupported_grant_type');
+  });
+});
+
+// A client identified by its metadata document (claude.ai's connector): public, its refresh
+// renewing with the refresh token alone (RFC 6749 §6), and a document that couldn't be read
+// being a "try again", not an unknown client.
+describe('a metadata document client', () => {
+  const metadataFlow = async () => {
+    const { verifier, challenge } = pkce();
+    const params = authorizeParams({ client_id: metadataClient.client_id, redirect_uri: metadataClient.redirect_uris[0] }, challenge);
+    const decision = await decide(params);
+    const code = codeFrom(decision.body.redirectTo);
+    return tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: params.redirect_uri, code_verifier: verifier, client_id: metadataClient.client_id });
+  };
+
+  it('renews without its client_id: new tokens, the refresh token rotated', async () => {
+    const tokens = await metadataFlow();
+    assert.equal(tokens.status, 200);
+    const renewed = await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.body.refresh_token });
+    assert.equal(renewed.status, 200, JSON.stringify(renewed.body));
+    assert.ok(renewed.body.access_token);
+    assert.notEqual(renewed.body.refresh_token, tokens.body.refresh_token);
+    const claims = signer.verify(renewed.body.access_token);
+    assert.equal(claims.client_id, metadataClient.client_id);
+    // With its client_id too, as it may send it.
+    const again = await tokenRequest({ grant_type: 'refresh_token', refresh_token: renewed.body.refresh_token, client_id: metadataClient.client_id });
+    assert.equal(again.status, 200);
+    // The one it rotated from no longer works (and used again, it ends the whole grant).
+    assert.equal((await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.body.refresh_token })).body.error, 'invalid_grant');
+  });
+
+  it("with another client's client_id, the refresh token isn't for it: invalid_grant, the token left as it was", async () => {
+    const tokens = await metadataFlow();
+    const other = await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.body.refresh_token }, ['streamby', SECRET]);
+    assert.equal(other.status, 400);
+    assert.equal(other.body.error, 'invalid_grant');
+    assert.equal((await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.body.refresh_token })).status, 200);
+  });
+
+  it('a confidential client still renews with its secret only', async () => {
+    const { tokens } = await flow();
+    const bare = await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.body.refresh_token });
+    assert.equal(bare.status, 401);
+    assert.equal(bare.body.error, 'invalid_client');
+    assert.equal((await tokenRequest({ grant_type: 'refresh_token', refresh_token: tokens.body.refresh_token }, ['streamby', SECRET])).status, 200);
+  });
+
+  it('an invalid refresh token, without a client_id, is invalid_grant (as Claude expects)', async () => {
+    const res = await tokenRequest({ grant_type: 'refresh_token', refresh_token: 'not-a-token' });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, 'invalid_grant');
+  });
+
+  it("its document down: a temporary 503, never 'Unknown client', and why is logged", async () => {
+    metadataFailure = new ClientMetadataError("client_id's document couldn't be fetched", true, 'ECONNRESET');
+    const request = await getRequest(authorizeParams({ client_id: metadataClient.client_id, redirect_uri: metadataClient.redirect_uris[0] }));
+    assert.equal(request.status, 503);
+    assert.equal(request.body.error, 'temporarily_unavailable');
+    const token = await tokenRequest({ grant_type: 'authorization_code', code: 'x', redirect_uri: metadataClient.redirect_uris[0], code_verifier: 'v'.repeat(43), client_id: metadataClient.client_id });
+    assert.equal(token.status, 503);
+    assert.equal(token.body.error, 'temporarily_unavailable');
+    assert.notEqual(token.body.error_description, 'Unknown client');
+    assert.ok(logged.some(line => line.includes(metadataClient.client_id) && line.includes('(ECONNRESET)')), logged.join('\n'));
+  });
+
+  it("its document turned down: an unknown client, and why is logged", async () => {
+    metadataFailure = new ClientMetadataError("client_id's document has no redirect_uris");
+    const request = await getRequest(authorizeParams({ client_id: metadataClient.client_id, redirect_uri: metadataClient.redirect_uris[0] }));
+    assert.equal(request.status, 400);
+    assert.equal(request.body.error, 'invalid_client');
+    assert.ok(logged.some(line => line.includes('has no redirect_uris')));
+  });
+
+  it('a failed token request is logged with its grant, error and client kind, never its token', async () => {
+    const warned: string[] = [];
+    const original = console.warn;
+    console.warn = (...args: unknown[]) => { warned.push(args.map(String).join(' ')); };
+    try {
+      await tokenRequest({ grant_type: 'refresh_token', refresh_token: 'secret-refresh-token-value' });
+      await tokenRequest({ grant_type: 'refresh_token', refresh_token: 'another-secret-value', client_id: metadataClient.client_id });
+    } finally {
+      console.warn = original;
+    }
+    const lines = warned.filter(l => l.startsWith('[oauth] token:'));
+    assert.equal(lines.length, 2);
+    assert.match(lines[0], /grant_type=refresh_token error=invalid_grant client_id=none/);
+    assert.match(lines[1], /client_id=metadata/);
+    assert.ok(lines.every(l => !l.includes('secret-refresh-token-value') && !l.includes('another-secret-value')));
   });
 });
 

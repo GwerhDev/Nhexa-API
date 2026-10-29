@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createClientMetadataResolver, isPrivateIp } from '../src/integrations/oauthClientMetadata';
+import { ClientMetadataError, createClientMetadataResolver, isPrivateIp, USER_AGENT } from '../src/integrations/oauthClientMetadata';
 import { OAUTH_SCOPES } from '../src/integrations/oauthServer';
 
 const URL_ID = 'https://agent.example/oauth/client.json';
@@ -87,6 +87,45 @@ describe('a client ID metadata document', () => {
     assert.equal(fetched.get(id(500)), 1, 'the newest is still kept');
     await resolve(id(0));
     assert.equal(fetched.get(id(0)), 2, 'the oldest was let go');
+  });
+
+  it('is asked for with a User-Agent of its own (some hosts turn a datacenter down without one)', async () => {
+    let headers: Headers | undefined;
+    const resolve = createClientMetadataResolver(OAUTH_SCOPES, async (_url, init) => { headers = new Headers(init.headers); return new Response(doc()); }, async () => ['93.184.216.34']);
+    await resolve(URL_ID);
+    assert.equal(headers?.get('user-agent'), USER_AGENT);
+    assert.match(USER_AGENT, /^Nhexa-OAuth\/1\.0 \(\+https:\/\/nhexa\.cl\)$/);
+  });
+
+  // Why it failed, as the OAuth server tells the client: a document that couldn't be fetched is
+  // a "try again" (temporary), one that turns it down is an unknown client. With its cause.
+  const failure = async (resolve: (id: string) => Promise<unknown>): Promise<ClientMetadataError> => {
+    try { await resolve(URL_ID); } catch (err) { assert.ok(err instanceof ClientMetadataError); return err; }
+    assert.fail('it was resolved');
+  };
+  const fetching = (fetcher: () => Promise<Response>, lookup: () => Promise<string[]> = async () => ['93.184.216.34']) =>
+    createClientMetadataResolver(OAUTH_SCOPES, fetcher, lookup);
+
+  it("couldn't be fetched: temporary, with why (the network's code, a timeout, the status)", async () => {
+    const reset = await failure(fetching(async () => { throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNRESET' } }); }));
+    assert.deepEqual([reset.temporary, reset.detail], [true, 'ECONNRESET']);
+    const timedOut = await failure(fetching(async () => { throw new DOMException('The operation timed out.', 'TimeoutError'); }));
+    assert.deepEqual([timedOut.temporary, timedOut.detail], [true, 'TimeoutError']);
+    for (const status of [403, 429, 500, 503]) {
+      const refused = await failure(fetching(async () => new Response('no', { status })));
+      assert.deepEqual([refused.temporary, refused.detail], [true, `HTTP ${status}`], String(status));
+    }
+    const notResolved = await failure(fetching(async () => new Response(doc()), async () => { throw Object.assign(new Error('getaddrinfo EAI_AGAIN'), { code: 'EAI_AGAIN' }); }));
+    assert.deepEqual([notResolved.temporary, notResolved.detail], [true, 'EAI_AGAIN']);
+  });
+
+  it('turned down for what it is: not temporary', async () => {
+    for (const body of [doc({ client_id: 'https://other.example/c.json' }), doc({ redirect_uris: [] }), 'not json']) {
+      assert.equal((await failure(resolverWith(body).resolve)).temporary, false, body);
+    }
+    const missing = await failure(fetching(async () => new Response('gone', { status: 404 })));
+    assert.deepEqual([missing.temporary, missing.detail], [false, 'HTTP 404']);
+    assert.equal((await failure(fetching(async () => new Response(doc()), async () => ['10.0.0.5']))).temporary, false);
   });
 
   it('knows a private address when it sees one', () => {

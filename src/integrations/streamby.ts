@@ -73,6 +73,9 @@ export default (app: Application): http.Server => {
     // Where workers call back: the public https URL. Behind Fly's proxy (TLS ends there, and
     // there's no trust proxy) the request's own URL would come out as http://.
     workerOptions: { callbackBaseUrl: `${apiUrl}${STREAMBY_PATH}` },
+    // Where an export's catalog links its content: StreamBy's own content route, at its public
+    // https URL (for the same reason as above).
+    contentBaseUrl: `${apiUrl}${STREAMBY_PATH}`,
   });
 
   app.use(STREAMBY_PATH, streambyBodyParser(), authMiddleware, streambyRouter);

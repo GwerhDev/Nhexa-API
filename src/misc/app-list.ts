@@ -35,7 +35,8 @@ export const appList: AppList = {
       label: 'Projects',
       route: '#',
       description: 'Gestor de contenido',
-      icon: 'https://streamby.s3.sa-east-1.amazonaws.com/6826af8fe0e42c69e2fa9d1d%2Fproject-image',
+      // Its StreamBy project's image, by StreamBy's image route: the bucket is private.
+      icon: 'https://api.nhexa.cl/streamby/6826af8fe0e42c69e2fa9d1d/image',
     },
   ],
 };

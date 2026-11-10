@@ -38,7 +38,7 @@ export const appList: AppList = {
       // Its entry in the catalog of StreamBy's nhexa-environment export: named by its content's
       // sha256, so it never expires (StreamBy redirects it to a signed URL; the bucket is private).
       // A new icon is a new URL: take it from the export's catalog.json.
-      icon: 'https://api.nhexa.cl/streamby/be4dce92-de7c-4820-8f93-b3ea3335575d/content/616d9ff1bc8efbf11b9a1010ee7292abf1e875f37836eedb8ce039be1265a7d6.svg',
+      icon: 'https://api.nhexa.cl/streamby/be4dce92-de7c-4820-8f93-b3ea3335575d/content/c3b2b8b741c8b49f34a090c5e5bff4ddca381fd151470d76a804cf624338632d.svg',
     },
   ],
 };

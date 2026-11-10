@@ -76,6 +76,9 @@ export default (app: Application): http.Server => {
     // Where an export's catalog links its content: StreamBy's own content route, at its public
     // https URL (for the same reason as above).
     contentBaseUrl: `${apiUrl}${STREAMBY_PATH}`,
+    // Where StreamBy is reached from outside, for the URLs it answers (a project's image route):
+    // the public https URL, for the same reason as above.
+    publicBaseUrl: `${apiUrl}${STREAMBY_PATH}`,
   });
 
   app.use(STREAMBY_PATH, streambyBodyParser(), authMiddleware, streambyRouter);

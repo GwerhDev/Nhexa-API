@@ -35,8 +35,10 @@ export const appList: AppList = {
       label: 'Projects',
       route: '#',
       description: 'Gestor de contenido',
-      // Its StreamBy project's image, by StreamBy's image route: the bucket is private.
-      icon: 'https://api.nhexa.cl/streamby/6826af8fe0e42c69e2fa9d1d/image',
+      // Its entry in the catalog of StreamBy's nhexa-environment export: named by its content's
+      // sha256, so it never expires (StreamBy redirects it to a signed URL; the bucket is private).
+      // A new icon is a new URL: take it from the export's catalog.json.
+      icon: 'https://api.nhexa.cl/streamby/be4dce92-de7c-4820-8f93-b3ea3335575d/content/616d9ff1bc8efbf11b9a1010ee7292abf1e875f37836eedb8ce039be1265a7d6.svg',
     },
   ],
 };
